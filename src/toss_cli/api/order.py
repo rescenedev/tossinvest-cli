@@ -25,6 +25,42 @@ def _is_kr_symbol(symbol: str) -> bool:
     return len(symbol) == 6 and symbol.isdigit()
 
 
+# KRX 주식 호가 단위 (가격 상한 미만 구간 → 단위). ETF/ELW 등은 단위가 다르므로
+# 검증은 차단이 아닌 경고로만 사용한다.
+KR_TICK_BANDS: tuple[tuple[int, int], ...] = (
+    (2_000, 1), (5_000, 5), (20_000, 10), (50_000, 50),
+    (200_000, 100), (500_000, 500),
+)
+KR_TICK_MAX = 1_000
+
+
+def kr_tick_size(price: "Decimal") -> "Decimal":
+    """KRX 주식 가격대별 호가 단위."""
+    from decimal import Decimal
+
+    for upper, tick in KR_TICK_BANDS:
+        if price < upper:
+            return Decimal(tick)
+    return Decimal(KR_TICK_MAX)
+
+
+def kr_tick_misaligned(symbol: str, price: str | None) -> "Decimal | None":
+    """KR 지정가가 호가 단위에 맞지 않으면 해당 단위를 반환 (맞으면 None).
+
+    ETF 등 단위가 다른 상품이 있어 차단 근거가 아닌 경고 용도.
+    """
+    from decimal import Decimal, InvalidOperation
+
+    if not price or not _is_kr_symbol(symbol):
+        return None
+    try:
+        value = Decimal(price)
+    except InvalidOperation:
+        return None
+    tick = kr_tick_size(value)
+    return tick if value % tick != 0 else None
+
+
 def build_order_body(
     *,
     symbol: str,
@@ -114,6 +150,40 @@ def list_orders(
         },
         account_seq=account_seq,
     )
+
+
+MAX_LIST_PAGES = 100
+
+
+def list_all_orders(
+    client: TossClient,
+    account_seq: int,
+    status: str,
+    *,
+    symbol: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    limit: int | None = None,
+) -> dict[str, Any]:
+    """주문 목록 전체 페이지를 cursor 를 따라가며 수집."""
+    orders: list[Any] = []
+    cursor: str | None = None
+    for _ in range(MAX_LIST_PAGES):
+        page = list_orders(
+            client, account_seq, status,
+            symbol=symbol, date_from=date_from, date_to=date_to,
+            cursor=cursor, limit=limit,
+        )
+        if not isinstance(page, dict):
+            orders.extend(page or [])
+            break
+        orders.extend(page.get("orders", []))
+        if not page.get("hasNext"):
+            break
+        cursor = page.get("nextCursor")
+        if not cursor:
+            break
+    return {"orders": orders, "hasNext": False}
 
 
 def get_order(client: TossClient, account_seq: int, order_id: str) -> Any:

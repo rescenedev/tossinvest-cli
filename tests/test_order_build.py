@@ -76,6 +76,17 @@ def test_amount_requires_market():
         )
 
 
+def test_kr_tick_size_bands():
+    from decimal import Decimal
+
+    cases = [
+        ("1500", "1"), ("3000", "5"), ("15000", "10"), ("30000", "50"),
+        ("70000", "100"), ("324500", "500"), ("700000", "1000"),
+    ]
+    for price, tick in cases:
+        assert order.kr_tick_size(Decimal(price)) == Decimal(tick), price
+
+
 def test_invalid_side():
     with pytest.raises(order.OrderValidationError):
         order.build_order_body(symbol="005930", side="HOLD", order_type="MARKET", quantity="1")

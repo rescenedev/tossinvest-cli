@@ -6,14 +6,19 @@
 
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
 from typing import Any
+from uuid import uuid4
 
 import typer
 
 from ..api import order
+from ..config import flag_enabled
 from ..errors import TossApiError
 from .. import render
 from ._common import get_state, open_client, output
+
+HIGH_VALUE_KRW = 100_000_000
 
 app = typer.Typer(help="주문/거래 (매수/매도/조회/정정/취소/수수료)")
 
@@ -34,6 +39,18 @@ def _place(
     dry_run: bool,
 ) -> None:
     """매수/매도 공통 처리: 본문 구성 → 확인 → 전송."""
+    sim = get_state(ctx).sim
+    if side == "SELL" and not sim and not dry_run and flag_enabled("TOSS_NO_SELL"):
+        render.print_error(
+            "TOSS_NO_SELL 설정으로 실거래 매도가 차단되어 있습니다. "
+            "(.env 의 TOSS_NO_SELL 을 제거하면 해제)"
+        )
+        raise typer.Exit(code=2)
+
+    if client_order_id is None:
+        # 멱등키 자동 생성 — 네트워크 재시도 시 중복 주문 방지 (스펙: 10분 유효)
+        client_order_id = f"toss-cli-{uuid4().hex[:24]}"
+
     try:
         body = order.build_order_body(
             symbol=symbol,
@@ -50,6 +67,7 @@ def _place(
         render.print_error(str(exc))
         raise typer.Exit(code=2)
 
+    estimated = _estimated_amount(quantity, price)
     side_kr = "매수" if side == "BUY" else "매도"
     render.key_values(
         f"{side_kr} 주문 확인",
@@ -59,18 +77,29 @@ def _place(
             ("호가유형", order_type),
             ("수량", quantity),
             ("금액", amount),
-            ("가격", price),
+            ("가격", render.fmt_decimal(price) if price else None),
+            ("예상 금액", render.fmt_decimal(estimated) if estimated is not None else None),
             ("유효조건", tif or "DAY"),
             ("멱등키", client_order_id),
         ],
     )
+
+    if (tick := order.kr_tick_misaligned(symbol, price)) is not None:
+        render.print_warning(
+            f"가격이 KRX 주식 호가 단위({tick}원)에 맞지 않습니다. "
+            "주식이라면 서버가 거부할 수 있습니다 (ETF 등은 단위가 다를 수 있음)."
+        )
+    if (
+        estimated is not None and estimated >= HIGH_VALUE_KRW
+        and order._is_kr_symbol(symbol) and not confirm_high_value
+    ):
+        render.print_warning("1억원 이상 주문 — 전송하려면 --confirm-high-value 가 필요합니다.")
 
     if dry_run:
         render.print_warning("dry-run: 실제 주문을 전송하지 않습니다. 요청 본문:")
         render.print_json(body)
         return
 
-    sim = get_state(ctx).sim
     if not yes and not sim:  # 시뮬레이션은 가짜 거래이므로 확인 생략
         confirmed = typer.confirm(f"위 내용으로 {side_kr} 주문을 전송할까요?")
         if not confirmed:
@@ -142,14 +171,21 @@ def list_orders(
     date_to: str = typer.Option(None, "--to", help="종료일 (YYYY-MM-DD)"),
     limit: int = typer.Option(None, "--limit", "-n", help="조회 건수"),
     cursor: str = typer.Option(None, "--cursor", help="페이지 커서"),
+    all_pages: bool = typer.Option(False, "--all", help="모든 페이지 자동 조회"),
 ) -> None:
     """주문 목록 조회."""
     with open_client(ctx) as (client, config):
-        data = order.list_orders(
-            client, config.require_account(), status.upper(),
-            symbol=symbol, date_from=date_from, date_to=date_to,
-            cursor=cursor, limit=limit,
-        )
+        if all_pages:
+            data = order.list_all_orders(
+                client, config.require_account(), status.upper(),
+                symbol=symbol, date_from=date_from, date_to=date_to, limit=limit,
+            )
+        else:
+            data = order.list_orders(
+                client, config.require_account(), status.upper(),
+                symbol=symbol, date_from=date_from, date_to=date_to,
+                cursor=cursor, limit=limit,
+            )
     output(ctx, data, _render_orders)
 
 
@@ -208,6 +244,16 @@ def commissions(ctx: typer.Context) -> None:
     with open_client(ctx) as (client, config):
         data = order.get_commissions(client, config.require_account())
     output(ctx, data, lambda d: render.print_json(d))
+
+
+def _estimated_amount(quantity: str | None, price: str | None) -> Decimal | None:
+    """지정가 주문의 수량×가격 예상 금액 (계산 불가하면 None)."""
+    if not quantity or not price:
+        return None
+    try:
+        return Decimal(quantity) * Decimal(price)
+    except InvalidOperation:
+        return None
 
 
 # -- renderers -----------------------------------------------------------

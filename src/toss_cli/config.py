@@ -82,6 +82,12 @@ def _coerce_account(raw: object) -> int | None:
         raise ConfigError(f"account_seq 값이 정수가 아닙니다: {raw!r}") from exc
 
 
+def flag_enabled(name: str, dotenv_path: Path | None = None) -> bool:
+    """불리언 플래그 조회. 우선순위: 환경변수 > .env(cwd)."""
+    raw = os.environ.get(name) or _load_dotenv(dotenv_path or Path.cwd() / ".env").get(name, "")
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def load_config(dotenv_path: Path | None = None) -> Config:
     """우선순위: 환경변수 > .env(cwd) > ~/.toss-cli/config.toml.
 

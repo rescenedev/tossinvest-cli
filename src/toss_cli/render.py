@@ -55,3 +55,25 @@ def _fmt(value: Any) -> str:
     if isinstance(value, bool):
         return "예" if value else "아니오"
     return str(value)
+
+
+def fmt_decimal(value: Any) -> str:
+    """천 단위 구분 기호를 넣은 숫자 문자열. 정수는 소수점 없이, 그 외 소수 2자리."""
+    from decimal import Decimal, InvalidOperation
+
+    if value is None or value == "":
+        return "[dim]-[/dim]"
+    try:
+        num = Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return str(value)
+    if num == num.to_integral_value():
+        return f"{num:,.0f}"
+    return f"{num:,.2f}"
+
+
+def short_dt(value: Any) -> str:
+    """ISO8601 → 'YYYY-MM-DD HH:MM' (없으면 -)."""
+    if not value:
+        return "[dim]-[/dim]"
+    return str(value).replace("T", " ")[:16]

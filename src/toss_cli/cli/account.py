@@ -36,12 +36,25 @@ def holdings(
 @app.command("buying-power")
 def buying_power(
     ctx: typer.Context,
-    currency: str = typer.Option("KRW", "--currency", "-c", help="KRW | USD"),
+    currency: str = typer.Option(None, "--currency", "-c", help="KRW | USD (미지정 시 둘 다)"),
 ) -> None:
-    """매수 가능 금액 조회."""
+    """매수 가능 금액 조회. 통화 미지정 시 KRW·USD 를 모두 조회."""
+    currencies = [currency.upper()] if currency else ["KRW", "USD"]
     with open_client(ctx) as (client, config):
-        data = order.get_buying_power(client, config.require_account(), currency.upper())
-    output(ctx, data, lambda d: render.key_values("매수 가능 금액", list(d.items())))
+        results = [
+            order.get_buying_power(client, config.require_account(), cur)
+            for cur in currencies
+        ]
+    data = results[0] if currency else results
+    output(ctx, data, lambda _d: _render_buying_power(results))
+
+
+def _render_buying_power(results: list) -> None:
+    rows = [
+        (d.get("currency"), _fmt_decimal(d.get("cashBuyingPower")))
+        for d in results if isinstance(d, dict)
+    ]
+    render.table("매수 가능 금액", ["통화", "현금 매수 가능"], rows)
 
 
 @app.command("sellable")
@@ -68,17 +81,7 @@ def _render_accounts(data: Any) -> None:
     )
 
 
-def _fmt_decimal(value: Any) -> str:
-    """천 단위 구분 기호를 넣은 숫자 문자열. 정수는 소수점 없이, 그 외 소수 2자리."""
-    if value is None or value == "":
-        return "[dim]-[/dim]"
-    try:
-        num = Decimal(str(value))
-    except (InvalidOperation, ValueError):
-        return str(value)
-    if num == num.to_integral_value():
-        return f"{num:,.0f}"
-    return f"{num:,.2f}"
+_fmt_decimal = render.fmt_decimal
 
 
 def _signed(value: Any, suffix: str = "") -> str:
@@ -135,6 +138,7 @@ def _render_holdings(data: Any) -> None:
         return
     pl = data.get("profitLoss", {})
     mv = data.get("marketValue", {})
+    daily = data.get("dailyProfitLoss", {})
     render.key_values(
         "보유 요약",
         [
@@ -142,11 +146,13 @@ def _render_holdings(data: Any) -> None:
             ("평가금액", _currency_amounts(mv.get("amount"))),
             ("평가손익", _currency_amounts(pl.get("amount"), signed=True)),
             ("수익률", _percent(pl.get("rate"))),
+            ("일간 손익", f"{_currency_amounts(daily.get('amount'), signed=True)}  {_percent(daily.get('rate'))}"),
         ],
     )
     rows = []
     for item in data.get("items", []):
         ipl = item.get("profitLoss", {})
+        idaily = item.get("dailyProfitLoss", {})
         mval = item.get("marketValue", {})
         rows.append(
             (
@@ -158,13 +164,14 @@ def _render_holdings(data: Any) -> None:
                 _fmt_decimal(mval) if (mval := mval.get("amount")) else None,
                 _signed(ipl.get("amount")),
                 _percent(ipl.get("rate")),
+                _percent(idaily.get("rate")),
                 _short_dt(item.get("purchasedAt")),
             )
         )
     if rows:
         render.table(
             "보유 종목",
-            ["종목", "이름", "수량", "평단", "현재가", "평가금액", "평가손익", "수익률", "매수일"],
+            ["종목", "이름", "수량", "평단", "현재가", "평가금액", "평가손익", "수익률", "일간", "매수일"],
             rows,
         )
     else:

@@ -1,0 +1,37 @@
+name: Release to PyPI
+
+# v* 태그 푸시 시 빌드 후 PyPI 에 Trusted Publishing 으로 배포.
+# 사전 설정: PyPI 프로젝트 설정 → Publishing → GitHub
+#   (owner: rescenedev, repo: tossinvest-cli, workflow: release.yml, environment: pypi)
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Build sdist + wheel
+        run: pipx run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # Trusted Publishing (토큰 불필요)
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
