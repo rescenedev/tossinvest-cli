@@ -328,12 +328,12 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
     <div class="sec-head reveal"><h2>새로 외울 것 없이,<br>치던 대로.</h2></div>
     <p class="sec-sub reveal">종목코드만 치면 시세. 수량을 붙이면 주문.<br>트레이딩 터미널의 문법을 그대로 가져왔습니다.</p>
     <div class="bento">
-      <div class="cell cell-3 reveal">
+      <div class="cell cell-2 reveal">
         <div class="glyph">&gt;_</div>
         <h3>대화형 REPL</h3>
         <p><code>toss</code> 한 번으로 진입합니다. 토큰과 연결을 세션 내내 재사용하고, 명령 히스토리와 자동완성을 지원합니다.</p>
       </div>
-      <div class="cell cell-3 reveal">
+      <div class="cell cell-2 reveal">
         <div class="glyph">↵</div>
         <h3>한 줄 숏컷</h3>
         <p><code>005930 100</code> 은 100주 매수. 음수는 매도, 세 번째 인자는 지정가. 보유 종목은 <code>p</code> 한 글자면 충분합니다.</p>
@@ -347,6 +347,11 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
         <div class="glyph">¶</div>
         <h3>스펙에 충실</h3>
         <p>공식 OpenAPI 스펙 기준 전 엔드포인트 래핑. 주문 규칙은 전송 전에 검증합니다.</p>
+      </div>
+      <div class="cell cell-2 reveal">
+        <div class="glyph">▂▄▆█</div>
+        <h3>차트 · 대시보드</h3>
+        <p><code>c 005930</code> 캔들 차트(이동평균·RSI·볼린저), <code>w 005930</code> 종목 대시보드, <code>wl</code> 관심종목 시세판.</p>
       </div>
       <div class="cell cell-2 reveal">
         <div class="glyph">{ }</div>
@@ -367,6 +372,9 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
       <div class="cheat-row"><div class="k">005930 100</div><div class="v">100주 <b class="red">시장가 매수</b></div></div>
       <div class="cheat-row"><div class="k">005930 -100</div><div class="v">100주 시장가 매도 — <b>음수는 매도</b></div></div>
       <div class="cheat-row"><div class="k">005930 100 70000</div><div class="v">100주 <b>지정가 70,000</b> 매수</div></div>
+      <div class="cheat-row"><div class="k">w 005930</div><div class="v"><b>종목 대시보드</b> — 시세 · 보유 · 차트 · 호가 한 화면</div></div>
+      <div class="cheat-row"><div class="k">wl</div><div class="v"><b>관심종목 시세판</b> — 전일 대비 등락순 (wl add 로 등록)</div></div>
+      <div class="cheat-row"><div class="k">c 005930 -P 3m</div><div class="v">캔들 차트 — MA · RSI · 볼린저 · 평단선</div></div>
       <div class="cheat-row"><div class="k">p</div><div class="v"><b>보유 종목</b> — 수량 · 평단 · 평가손익 · 수익률</div></div>
       <div class="cheat-row"><div class="k">m ob 005930</div><div class="v">호가창 (market orderbook)</div></div>
       <div class="cheat-row"><div class="k">a bp</div><div class="v">매수 가능 금액 (account buying-power)</div></div>
