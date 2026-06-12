@@ -79,3 +79,16 @@ def test_watch_prices_renders_until_interrupt(monkeypatch):
     monkeypatch.setattr(time, "sleep", fake_sleep)
     out = _capture(market_cli._watch_prices, None, ["005930"], 1.0)
     assert calls["n"] == 1 and "watch 종료" in out
+
+
+def test_chart_renders_candlestick(capsys):
+    from toss_cli.cli.market import _render_chart
+
+    _render_chart("005930", "1d", {"candles": [
+        {"timestamp": "2026-06-12T00:00:00", "openPrice": "313", "highPrice": "339",
+         "lowPrice": "313", "closePrice": "324"},
+        {"timestamp": "2026-06-10T00:00:00", "openPrice": "290", "highPrice": "300",
+         "lowPrice": "288", "closePrice": "292"},
+    ]})
+    out = capsys.readouterr().out
+    assert "005930" in out and "기간 등락" in out

@@ -34,7 +34,8 @@ GROUP_ALIASES = {
     "a": "account", "o": "order", "au": "auth",
 }
 CMD_ALIASES = {
-    "market": {"p": "price", "ob": "orderbook", "t": "trades", "c": "candles", "l": "limits"},
+    "market": {"p": "price", "ob": "orderbook", "t": "trades", "c": "candles",
+               "ch": "chart", "l": "limits"},
     "stock": {"i": "info", "w": "warnings"},
     "info": {"x": "fx", "cal": "calendar"},
     "account": {"l": "list", "h": "holdings", "bp": "buying-power", "se": "sellable"},
@@ -179,6 +180,10 @@ def expand_aliases(tokens: list[str]) -> list[str]:
     if first in ("p", "port", "포트"):
         return ["account", "holdings", *tokens[1:]]
 
+    # 단독 숏컷: c <심볼> → 캔들 차트 (추세 보기)
+    if first in ("c", "chart", "차트") and len(tokens) >= 2:
+        return ["market", "chart", *tokens[1:]]
+
     if _SYMBOL_RE.fullmatch(first):
         return _expand_symbol(tokens)
 
@@ -286,12 +291,11 @@ def _print_banner(config, sim: bool) -> None:
 
 
 def _print_help(command) -> None:
-    groups = ", ".join(sorted(getattr(command, "commands", {}).keys()))
+    _print_command_reference(command)
     render.key_values(
-        "명령 / 메타",
+        "메타 명령",
         [
-            ("명령 그룹", groups),
-            ("개별 도움말", "<그룹> --help  (예: order --help)"),
+            ("개별 도움말", "<명령> --help  (예: order buy --help)"),
             (":account <seq>", "세션 계좌 변경"),
             (":json", "JSON 출력 토글"),
             (":tick [%]", "모의 시세 이동 (sim 전용, 기본 +1%) → 손익 변화"),
@@ -305,6 +309,7 @@ def _print_help(command) -> None:
         ["입력", "동작"],
         [
             ("p", "보유 종목 (수량/손익/매수일)"),
+            ("c 005930", "캔들 차트 (추세 확인, c AAPL -i 1m 도 가능)"),
             ("m p 005930", "market price 005930 (그룹/명령 약어)"),
             ("005930", "현재가 조회"),
             ("005930 000660", "여러 종목 현재가"),
@@ -318,6 +323,30 @@ def _print_help(command) -> None:
         "[dim]약어 — 그룹: m=market s=stock i=info a=account o=order · "
         "예: o b(order buy), a h(account holdings), m ob(orderbook)[/dim]"
     )
+
+
+def _print_command_reference(command) -> None:
+    """Typer 명령 트리에서 전체 서브커맨드를 약어와 함께 나열."""
+    reverse_group = {full: short for short, full in GROUP_ALIASES.items()}
+    rows = []
+    for gname in sorted(getattr(command, "commands", {})):
+        group = command.commands[gname]
+        subcommands = getattr(group, "commands", None)
+        if not subcommands:
+            rows.append((gname, "", _short_help(group)))
+            continue
+        galias = reverse_group.get(gname)
+        alias_map = {full: short for short, full in CMD_ALIASES.get(gname, {}).items()}
+        for cname in sorted(subcommands):
+            alias = alias_map.get(cname)
+            shortcut = f"{galias} {alias}" if galias and alias else ""
+            rows.append((f"{gname} {cname}", shortcut, _short_help(subcommands[cname])))
+    render.table("전체 명령", ["명령", "약어", "설명"], rows)
+
+
+def _short_help(cmd) -> str:
+    text = (getattr(cmd, "help", None) or getattr(cmd, "short_help", None) or "").strip()
+    return text.splitlines()[0] if text else ""
 
 
 def _make_prompt(command):

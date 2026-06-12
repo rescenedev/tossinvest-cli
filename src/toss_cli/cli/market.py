@@ -81,6 +81,20 @@ def candles(
     output(ctx, data, _render_candles)
 
 
+@app.command("chart")
+def chart(
+    ctx: typer.Context,
+    symbol: str = typer.Argument(..., help="종목 심볼"),
+    interval: str = typer.Option("1d", "--interval", "-i", help="1m | 1d"),
+    count: int = typer.Option(60, "--count", "-n", help="캔들 수"),
+    before: str = typer.Option(None, "--before", help="기준 시각 (ISO8601)"),
+) -> None:
+    """캔들 차트를 터미널에 그려서 추세 확인."""
+    with open_client(ctx) as (client, _):
+        data = market_data.get_candles(client, symbol, interval, count, before, None)
+    output(ctx, data, lambda d: _render_chart(symbol, interval, d))
+
+
 @app.command("limits")
 def limits(
     ctx: typer.Context,
@@ -138,6 +152,50 @@ def _render_candles(data: Any) -> None:
     render.table("캔들", ["시각", "시가", "고가", "저가", "종가", "거래량"], rows)
     if isinstance(data, dict) and data.get("nextBefore"):
         render.console.print(f"[dim]다음 페이지: --before {data['nextBefore']}[/dim]")
+
+
+def _render_chart(symbol: str, interval: str, data: Any) -> None:
+    """plotext 캔들스틱 차트 + 기간 등락 요약. 상승=빨강, 하락=파랑 (한국식)."""
+    from decimal import Decimal
+
+    import plotext as plt
+
+    candles = list(reversed((data or {}).get("candles", [])))  # 과거 → 최근
+    if not candles:
+        render.print_warning("캔들 데이터가 없습니다.")
+        return
+
+    stamps = [render.short_dt(c.get("timestamp")) for c in candles]  # "YYYY-MM-DD HH:MM"
+    if interval == "1m":
+        dates = [s[11:16] for s in stamps]              # "HH:MM"
+    else:
+        dates = [s[5:10].replace("-", "/") for s in stamps]  # "MM/DD"
+    series = {
+        "Open": [float(c["openPrice"]) for c in candles],
+        "High": [float(c["highPrice"]) for c in candles],
+        "Low": [float(c["lowPrice"]) for c in candles],
+        "Close": [float(c["closePrice"]) for c in candles],
+    }
+
+    plt.clear_figure()
+    plt.theme("clear")
+    plt.date_form("H:M" if interval == "1m" else "m/d")
+    plt.candlestick(dates, series, colors=["red", "blue"])
+    width = min(render.console.width or 100, 110)
+    plt.plotsize(width, 22)
+    first, last = Decimal(candles[0]["closePrice"]), Decimal(candles[-1]["closePrice"])
+    change = (last - first) / first * 100 if first else Decimal(0)
+    plt.title(f"{symbol}  {interval} x{len(candles)}")
+    print(plt.build())
+
+    high = max(Decimal(c["highPrice"]) for c in candles)
+    low = min(Decimal(c["lowPrice"]) for c in candles)
+    color = "red" if change > 0 else "blue" if change < 0 else "white"
+    render.console.print(
+        f"기간 등락 [{color}]{change:+.2f}%[/{color}]"
+        f" · 종가 {render.fmt_decimal(first)} → {render.fmt_decimal(last)}"
+        f" · 고가 {render.fmt_decimal(high)} · 저가 {render.fmt_decimal(low)}"
+    )
 
 
 def _render_limits(symbol: str, data: dict) -> None:

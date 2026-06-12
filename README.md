@@ -149,6 +149,7 @@ toss market price 005930 --watch 5   # 5초 간격 폴링 갱신 (Ctrl-C 종료)
 toss market orderbook 005930         # 호가
 toss market trades 005930 -n 20      # 최근 체결
 toss market candles 005930 -i 1d -n 30   # 캔들 (1m | 1d)
+toss market chart 005930 -n 60       # 터미널 캔들 차트 (추세 확인, REPL: c 005930)
 toss market limits 005930            # 상/하한가
 ```
 

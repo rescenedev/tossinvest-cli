@@ -81,3 +81,8 @@ def test_alnum_kr_etf_code():
 def test_lowercase_commands_not_treated_as_ticker():
     assert expand_aliases(["market", "price", "005930"]) == ["market", "price", "005930"]
     assert expand_aliases(["p"]) == ["account", "holdings"]
+
+
+def test_chart_shortcut():
+    assert expand_aliases(["c", "005930"]) == ["market", "chart", "005930"]
+    assert expand_aliases(["c", "AAPL", "-i", "1m"]) == ["market", "chart", "AAPL", "-i", "1m"]
