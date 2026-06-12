@@ -182,14 +182,6 @@ h2 {
 .cell h3 { font-size: 21px; font-weight: 700; letter-spacing: -.018em; margin-bottom: 6px; }
 .cell p { font-size: 14.5px; color: var(--ink-2); letter-spacing: -.01em; }
 .cell code { font-family: var(--mono); font-size: 12.5px; background: rgba(255,255,255,.1); border-radius: 6px; padding: 1px 6px; color: var(--ink); }
-.cell.feature-dark { background: linear-gradient(160deg, #fafafa, #e8e8ed); border: 0; }
-.cell.feature-dark h3 { color: #1d1d1f; }
-.cell.feature-dark p { color: #6e6e73; }
-.cell.feature-dark code { background: rgba(0,0,0,.07); color: #1d1d1f; }
-.cell.feature-blue { background: linear-gradient(145deg, var(--blue), #5ea2ff); }
-.cell.feature-blue .glyph, .cell.feature-blue h3 { color: #fff; }
-.cell.feature-blue p { color: rgba(255,255,255,.82); }
-.cell.feature-blue code { background: rgba(255,255,255,.18); color: #fff; }
 
 /* ───────── 다크 섹션: 치트시트 ───────── */
 .dark { background: var(--bg-alt); color: #f5f5f7; }
@@ -219,11 +211,13 @@ h2 {
 @media (max-width: 600px) { .cheat-row { grid-template-columns: 1fr; } .cheat-row .k { padding-bottom: 2px; } .cheat-row .v { padding-top: 0; } }
 
 /* ───────── 전체 명령어 ───────── */
-.cmd-grid { columns: 3; column-gap: 16px; margin-top: 56px; }
-@media (max-width: 960px) { .cmd-grid { columns: 2; } }
-@media (max-width: 620px) { .cmd-grid { columns: 1; } }
+.cmd-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 16px; margin-top: 56px; align-items: start;
+}
+.cmd-col { display: grid; gap: 16px; align-content: start; }
+@media (max-width: 960px) { .cmd-grid { grid-template-columns: 1fr; max-width: 560px; margin-left: auto; margin-right: auto; } }
 .cmd-group {
-  break-inside: avoid; margin-bottom: 16px;
   background: var(--card); border: 1px solid rgba(255,255,255,.06);
   border-radius: 20px; padding: 22px 24px 14px;
 }
@@ -334,17 +328,17 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
     <div class="sec-head reveal"><h2>새로 외울 것 없이,<br>치던 대로.</h2></div>
     <p class="sec-sub reveal">종목코드만 치면 시세. 수량을 붙이면 주문.<br>트레이딩 터미널의 문법을 그대로 가져왔습니다.</p>
     <div class="bento">
-      <div class="cell cell-3 feature-dark reveal">
+      <div class="cell cell-3 reveal">
         <div class="glyph">&gt;_</div>
         <h3>대화형 REPL</h3>
         <p><code>toss</code> 한 번으로 진입합니다. 토큰과 연결을 세션 내내 재사용하고, 명령 히스토리와 자동완성을 지원합니다.</p>
       </div>
       <div class="cell cell-3 reveal">
-        <div class="glyph">⚡</div>
+        <div class="glyph">↵</div>
         <h3>한 줄 숏컷</h3>
         <p><code>005930 100</code> 은 100주 매수. 음수는 매도, 세 번째 인자는 지정가. 보유 종목은 <code>p</code> 한 글자면 충분합니다.</p>
       </div>
-      <div class="cell cell-2 feature-blue reveal">
+      <div class="cell cell-2 reveal">
         <div class="glyph">◎</div>
         <h3>시뮬레이션 모드</h3>
         <p>자격증명 없이 <code>--sim</code> 으로 전 기능 체험. 모의 시세를 움직여 손익까지 확인합니다.</p>
@@ -387,6 +381,7 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
     <div class="sec-head reveal"><h2>전체 명령어.</h2></div>
     <p class="sec-sub reveal">모든 명령은 단발 실행과 REPL 안에서 동일하게 동작합니다.<br>각 명령 뒤에 <code style="font-family:var(--mono); font-size:.85em;">--help</code> 를 붙이면 전체 옵션이 나옵니다.</p>
     <div class="cmd-grid">
+      <div class="cmd-col">
       <div class="cmd-group reveal">
         <h3>market <span>시세</span></h3>
         <div class="cmd-row"><code>price</code><span>현재가 — 여러 종목 동시 조회</span></div>
@@ -405,6 +400,8 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
         <div class="cmd-row"><code>cancel</code><span>취소</span></div>
         <div class="cmd-row"><code>commissions</code><span>매매 수수료</span></div>
       </div>
+      </div>
+      <div class="cmd-col">
       <div class="cmd-group reveal">
         <h3>account <span>계좌 · 자산</span></h3>
         <div class="cmd-row"><code>list</code><span>계좌 목록 (accountSeq 확인)</span></div>
@@ -422,6 +419,8 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
         <div class="cmd-row"><code>fx</code><span>환율</span></div>
         <div class="cmd-row"><code>calendar</code><span>거래 캘린더 (KR | US)</span></div>
       </div>
+      </div>
+      <div class="cmd-col">
       <div class="cmd-group reveal">
         <h3>auth <span>인증</span></h3>
         <div class="cmd-row"><code>status</code><span>설정 확인 — 시크릿 마스킹</span></div>
@@ -435,6 +434,7 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
         <div class="cmd-row"><code>--json</code><span>원본 JSON 출력</span></div>
         <div class="cmd-row"><code>--sim</code><span>시뮬레이션 모드</span></div>
         <div class="cmd-row"><code>--dry-run</code><span>주문 전송 없이 미리보기 (buy · sell)</span></div>
+      </div>
       </div>
     </div>
   </div>
