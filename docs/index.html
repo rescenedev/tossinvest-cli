@@ -251,6 +251,27 @@ h2 {
 .safe p { font-size: 14.5px; color: var(--ink-2); letter-spacing: -.01em; }
 .safe code { font-family: var(--mono); font-size: 12.5px; background: rgba(255,255,255,.1); border-radius: 6px; padding: 1px 6px; }
 
+/* ───────── 릴리스 노트 ───────── */
+.timeline { max-width: 720px; margin: 56px auto 0; }
+.rel {
+  display: grid; grid-template-columns: 150px 1fr; gap: 20px;
+  padding: 26px 0; border-top: 1px solid rgba(255,255,255,.08);
+}
+.rel:first-child { border-top: 0; }
+@media (max-width: 600px) { .rel { grid-template-columns: 1fr; gap: 8px; } }
+.rel .v { font-family: var(--mono); }
+.rel .v .tag-v {
+  display: inline-block; font-size: 13px; font-weight: 600; color: #5ea2ff;
+  background: rgba(49,130,246,.14); border-radius: 980px; padding: 4px 14px;
+}
+.rel .v .date { display: block; font-size: 11.5px; color: var(--ink-3); margin-top: 8px; }
+.rel h3 { font-size: 17px; font-weight: 700; letter-spacing: -.015em; margin-bottom: 8px; }
+.rel ul { list-style: none; }
+.rel li { font-size: 14px; color: var(--ink-2); letter-spacing: -.01em; padding: 3px 0 3px 16px; position: relative; }
+.rel li::before { content: "·"; position: absolute; left: 2px; color: #5ea2ff; font-weight: 700; }
+.rel code { font-family: var(--mono); font-size: 12px; background: rgba(255,255,255,.09); border-radius: 5px; padding: 1px 6px; color: var(--ink); }
+.rel-more { text-align: center; margin-top: 36px; font-size: 15px; }
+
 /* ───────── 마지막 CTA ───────── */
 .final { text-align: center; }
 .final .install-line {
@@ -293,6 +314,7 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
       <a href="#shortcuts">숏컷</a>
       <a href="#commands">명령어</a>
       <a href="#safety">안전장치</a>
+      <a href="#releases">릴리스</a>
       <a href="https://github.com/rescenedev/tossinvest-cli">GitHub</a>
       <a class="nav-cta" href="https://pypi.org/project/tossinvest-cli/">설치</a>
     </div>
@@ -478,6 +500,62 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
         <p>지정가 가격 필수, 금액 주문은 미국 주식 전용 같은 규칙을 서버에 가기 전에 잡아냅니다.</p>
       </div>
     </div>
+  </div>
+</section>
+
+
+<!-- ═══════════ 릴리스 노트 ═══════════ -->
+<section class="alt" id="releases">
+  <div class="sec-inner">
+    <div class="sec-head reveal"><h2>릴리스 노트.</h2></div>
+    <p class="sec-sub reveal">태그 한 번이면 PyPI 까지 자동으로 갑니다.</p>
+    <div class="timeline reveal">
+      <div class="rel">
+        <div class="v"><span class="tag-v">v0.2.3</span><span class="date">2026-06-13 · 최신</span></div>
+        <div>
+          <h3>관심종목 시세판</h3>
+          <ul>
+            <li><code>wl</code> 관심종목 시세판 — 전일 대비 등락순 정렬, <code>-w</code> 실시간 갱신</li>
+            <li>REPL 종료 UX — Ctrl-C 두 번, <code>/quit</code> · <code>q</code>, 실행 중 Ctrl-C 는 명령만 중단</li>
+            <li><code>c 005930 -P 1d</code> 오늘(분봉) 차트 프리셋</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rel">
+        <div class="v"><span class="tag-v">v0.2.2</span><span class="date">2026-06-12</span></div>
+        <div>
+          <h3>sim 캔들 수정</h3>
+          <ul><li>시뮬레이션 캔들 응답을 스펙 형태로 — sim 모드 차트·캔들 표 복구</li></ul>
+        </div>
+      </div>
+      <div class="rel">
+        <div class="v"><span class="tag-v">v0.2.1</span><span class="date">2026-06-12</span></div>
+        <div>
+          <h3>Python 3.11+</h3>
+          <ul><li>requires-python 상향 — Python 3.10 설치 깨짐 수정 (tomllib)</li></ul>
+        </div>
+      </div>
+      <div class="rel">
+        <div class="v"><span class="tag-v">v0.2.0</span><span class="date">2026-06-12</span></div>
+        <div>
+          <h3>차트 · 대시보드 · 안전장치</h3>
+          <ul>
+            <li>터미널 캔들 차트 — 이동평균 · 거래량 · RSI · 볼린저밴드 · 보유 평단선 · <code>--watch</code></li>
+            <li><code>w 005930</code> 종목 원샷 대시보드, 보유종목 일간 손익</li>
+            <li>주문 안전장치 — 예상 금액 · 1억+ 차단 · 호가 단위 경고 · 멱등키 자동 · <code>TOSS_NO_SELL</code></li>
+            <li>CI + Trusted Publishing 자동 배포</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rel">
+        <div class="v"><span class="tag-v">v0.1.0</span><span class="date">2026-06-12</span></div>
+        <div>
+          <h3>최초 공개</h3>
+          <ul><li>시세 · 종목 · 계좌 · 주문 전체 래핑, 대화형 REPL, 시뮬레이션 모드</li></ul>
+        </div>
+      </div>
+    </div>
+    <p class="rel-more reveal"><a class="link-more" href="https://github.com/rescenedev/tossinvest-cli/releases">GitHub 에서 전체 릴리스 보기</a></p>
   </div>
 </section>
 
