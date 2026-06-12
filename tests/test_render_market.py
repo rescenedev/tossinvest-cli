@@ -121,3 +121,41 @@ def test_chart_single_candle_no_volume_subplot(capsys):
     _render_chart("SPCX", "1d", {"candles": _sample_candles(1)})
     out = capsys.readouterr().out
     assert "기간 등락" in out
+
+
+def test_rsi_series_bounds_and_alignment():
+    from toss_cli.cli.market import _rsi_series
+
+    closes = [float(100 + i) for i in range(30)]      # 단조 상승 → RSI 100
+    values = _rsi_series(closes, 14)
+    assert len(values) == 30 - 14
+    assert all(v == 100.0 for v in values)
+
+    closes_down = [float(100 - i) for i in range(30)]  # 단조 하락 → RSI 0
+    assert all(v == 0.0 for v in _rsi_series(closes_down, 14))
+
+
+def test_bollinger_bands_shape():
+    from toss_cli.cli.market import _bollinger
+
+    closes = [float(100 + (i % 5)) for i in range(40)]
+    upper, lower = _bollinger(closes, 20, 2.0)
+    assert len(upper) == len(lower) == 40 - 20 + 1
+    assert all(u >= l for u, l in zip(upper, lower))
+
+
+def test_period_preset_mapping():
+    from toss_cli.cli.market import _period_to_count
+
+    assert _period_to_count("1w") == 5
+    assert _period_to_count("3m") == 66
+    assert _period_to_count("1y") == 260
+
+
+def test_chart_with_rsi_and_bb(capsys):
+    from toss_cli.cli.market import _render_chart
+
+    _render_chart("005930", "1d", {"candles": _sample_candles(40)},
+                  ma_periods=(), show_volume=True, rsi_period=14, bb_period=20)
+    out = capsys.readouterr().out
+    assert "RSI" in out and "BB" in out

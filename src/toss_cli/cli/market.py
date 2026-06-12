@@ -51,9 +51,16 @@ def _watch(draw, interval: float) -> None:
 def orderbook(
     ctx: typer.Context,
     symbol: str = typer.Argument(..., help="종목 심볼"),
+    watch: float = typer.Option(None, "--watch", "-w", help="N초 간격 폴링 갱신 (Ctrl-C 종료)"),
 ) -> None:
     """호가 조회."""
     with open_client(ctx) as (client, _):
+        if watch:
+            _watch(
+                lambda: _render_orderbook(symbol, market_data.get_orderbook(client, symbol)),
+                max(1.0, watch),
+            )
+            return
         data = market_data.get_orderbook(client, symbol)
     output(ctx, data, lambda d: _render_orderbook(symbol, d))
 
@@ -94,25 +101,33 @@ def chart(
     before: str = typer.Option(None, "--before", help="기준 시각 (ISO8601)"),
     ma: str = typer.Option("5,20", "--ma", help="이동평균 기간 (쉼표 구분, 빈 문자열이면 끔)"),
     volume: bool = typer.Option(True, "--volume/--no-volume", help="거래량 서브차트"),
+    rsi: int = typer.Option(None, "--rsi", help="RSI 기간 (예: 14)"),
+    bb: int = typer.Option(None, "--bb", help="볼린저밴드 기간 (예: 20, 승수 2)"),
+    period: str = typer.Option(None, "--period", "-P", help="기간 프리셋: 1w|1m|3m|6m|1y (일봉)"),
     watch: float = typer.Option(None, "--watch", "-w", help="N초 간격 갱신 (Ctrl-C 종료)"),
 ) -> None:
-    """캔들 차트를 터미널에 그려서 추세 확인 (이동평균·거래량·평단선 포함)."""
+    """캔들 차트를 터미널에 그려서 추세 확인 (이동평균·거래량·RSI·볼린저·평단선)."""
     ma_periods = tuple(int(p) for p in ma.split(",") if p.strip().isdigit())
+    if period:
+        count = _period_to_count(period)
+        interval = "1d"
     with open_client(ctx) as (client, config):
         avg_price = _holding_avg_price(client, config, symbol)
 
-        def fetch():
-            return market_data.get_candles(client, symbol, interval, count, before, None)
+        def draw(data=None):
+            _render_chart(
+                symbol, interval,
+                data if data is not None
+                else market_data.get_candles(client, symbol, interval, count, before, None),
+                ma_periods=ma_periods, show_volume=volume, avg_price=avg_price,
+                rsi_period=rsi, bb_period=bb,
+            )
 
         if watch:
-            _watch(lambda: _render_chart(
-                symbol, interval, fetch(),
-                ma_periods=ma_periods, show_volume=volume, avg_price=avg_price,
-            ), max(1.0, watch))
+            _watch(draw, max(1.0, watch))
             return
-        data = fetch()
-    output(ctx, data, lambda d: _render_chart(
-        symbol, interval, d, ma_periods=ma_periods, show_volume=volume, avg_price=avg_price))
+        data = market_data.get_candles(client, symbol, interval, count, before, None)
+    output(ctx, data, lambda d: draw(d))
 
 
 def _holding_avg_price(client, config, symbol: str) -> str | None:
@@ -191,6 +206,60 @@ def _render_candles(data: Any) -> None:
 
 
 _MA_COLORS = ("orange", "yellow", "green", "cyan")
+_PERIOD_COUNTS = {"1w": 5, "1m": 22, "3m": 66, "6m": 130, "1y": 260}
+
+
+def _period_to_count(period: str) -> int:
+    """기간 프리셋 → 일봉 수 (거래일 기준)."""
+    try:
+        return _PERIOD_COUNTS[period.lower()]
+    except KeyError:
+        raise typer.BadParameter(
+            f"period 는 {', '.join(_PERIOD_COUNTS)} 중 하나여야 합니다: {period}"
+        )
+
+
+def _sma(values: list[float], period: int) -> list[float]:
+    """단순 이동평균. 결과는 values[period-1:] 와 정렬."""
+    return [
+        sum(values[i - period + 1 : i + 1]) / period
+        for i in range(period - 1, len(values))
+    ]
+
+
+def _bollinger(closes: list[float], period: int, k: float) -> tuple[list[float], list[float]]:
+    """볼린저밴드 (상단, 하단). 결과는 closes[period-1:] 와 정렬."""
+    middles = _sma(closes, period)
+    upper, lower = [], []
+    for i, mid in enumerate(middles):
+        window = closes[i : i + period]
+        var = sum((v - mid) ** 2 for v in window) / period
+        std = var ** 0.5
+        upper.append(mid + k * std)
+        lower.append(mid - k * std)
+    return upper, lower
+
+
+def _rsi_series(closes: list[float], period: int) -> list[float]:
+    """Wilder RSI. 결과는 closes[period:] 와 정렬 (필요 데이터 부족 시 빈 리스트)."""
+    if len(closes) <= period:
+        return []
+    gains = [max(closes[i] - closes[i - 1], 0.0) for i in range(1, len(closes))]
+    losses = [max(closes[i - 1] - closes[i], 0.0) for i in range(1, len(closes))]
+
+    def to_rsi(avg_gain: float, avg_loss: float) -> float:
+        if avg_loss == 0:
+            return 100.0 if avg_gain > 0 else 50.0
+        return 100.0 - 100.0 / (1.0 + avg_gain / avg_loss)
+
+    avg_g = sum(gains[:period]) / period
+    avg_l = sum(losses[:period]) / period
+    values = [to_rsi(avg_g, avg_l)]
+    for i in range(period, len(gains)):
+        avg_g = (avg_g * (period - 1) + gains[i]) / period
+        avg_l = (avg_l * (period - 1) + losses[i]) / period
+        values.append(to_rsi(avg_g, avg_l))
+    return values
 
 
 def _render_chart(
@@ -201,6 +270,8 @@ def _render_chart(
     ma_periods: tuple[int, ...] = (5, 20),
     show_volume: bool = True,
     avg_price: str | None = None,
+    rsi_period: int | None = None,
+    bb_period: int | None = None,
 ) -> None:
     """plotext 캔들스틱 + 이동평균 + 거래량 + 평단선. 상승=빨강, 하락=파랑 (한국식)."""
     from decimal import Decimal
@@ -226,18 +297,28 @@ def _render_chart(
     }
     volumes = [float(c.get("volume") or 0) for c in candles]
     draw_volume = show_volume and any(volumes) and len(candles) > 1
+    rsi_values = _rsi_series(closes, rsi_period) if rsi_period else []
+    draw_rsi = bool(rsi_values)
     width = min(render.console.width or 100, 110)
     date_form = "H:M" if interval == "1m" else "m/d"
 
-    plt.clear_figure()
-    if draw_volume:
-        plt.subplots(2, 1)
-        plt.subplot(1, 1)
-        plt.subplot(1, 1).plotsize(width, 15)
+    # 패널 구성에 따라 높이를 터미널 한도(약 24행) 안으로 배분.
+    # plotext 서브플롯은 clear_figure 후에도 그리드 상태가 남는 버그가 있어
+    # 패널마다 독립 figure 를 만들어 이어서 출력한다.
+    panels = 1 + int(draw_volume) + int(draw_rsi)
+    main_h, vol_h, rsi_h = {1: (22, 0, 0), 2: (15, 8, 8), 3: (12, 5, 6)}[panels]
 
+    plt.clear_figure()
     plt.theme("clear")
     plt.date_form(date_form)
+    plt.plotsize(width, main_h)
     plt.candlestick(dates, series, colors=["red", "blue"])
+
+    # 볼린저밴드 (기간 미달 시 생략)
+    if bb_period and len(closes) >= bb_period:
+        upper, lower = _bollinger(closes, bb_period, 2.0)
+        plt.plot(dates[bb_period - 1 :], upper, label=f"BB{bb_period}", color="gray")
+        plt.plot(dates[bb_period - 1 :], lower, color="gray")
 
     # 이동평균선 오버레이 (기간이 캔들 수보다 길면 생략)
     for period, color in zip(ma_periods, _MA_COLORS):
@@ -261,20 +342,32 @@ def _render_chart(
     first, last = Decimal(candles[0]["closePrice"]), Decimal(candles[-1]["closePrice"])
     change = (last - first) / first * 100 if first else Decimal(0)
     plt.title(f"{symbol}  {interval} x{len(candles)}")
+    print(plt.build())
 
     if draw_volume:
-        # 거래량 서브차트 — 양봉 빨강 / 음봉 파랑
+        # 거래량 패널 — 양봉 빨강 / 음봉 파랑
         up = [v if series["Close"][i] >= series["Open"][i] else 0 for i, v in enumerate(volumes)]
         down = [v if series["Close"][i] < series["Open"][i] else 0 for i, v in enumerate(volumes)]
-        plt.subplot(2, 1)
-        plt.subplot(2, 1).plotsize(width, 8)
+        plt.clear_figure()
         plt.theme("clear")
         plt.date_form(date_form)
+        plt.plotsize(width, vol_h)
         plt.bar(dates, up, color="red")
         plt.bar(dates, down, color="blue")
         plt.title("거래량")
+        print(plt.build())
 
-    print(plt.build())
+    if draw_rsi:
+        # RSI 패널 — 70(과매수)/30(과매도) 기준선
+        plt.clear_figure()
+        plt.theme("clear")
+        plt.date_form(date_form)
+        plt.plotsize(width, rsi_h)
+        plt.plot(dates[rsi_period:], rsi_values, label=f"RSI{rsi_period}", color="cyan")
+        plt.hline(70, "red")
+        plt.hline(30, "blue")
+        plt.ylim(0, 100)
+        print(plt.build())
 
     high = max(Decimal(c["highPrice"]) for c in candles)
     low = min(Decimal(c["lowPrice"]) for c in candles)
