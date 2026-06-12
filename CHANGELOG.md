@@ -4,6 +4,7 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-13
 ### Added
 - `--csv` 전역 출력 (파이프/엑셀/에이전트용, 중첩 응답 평탄화)
 - 주문 액션별 차단 게이트: `TOSS_NO_BUY` / `TOSS_NO_MODIFY` / `TOSS_NO_CANCEL` (기존 `TOSS_NO_SELL` 확장)
