@@ -5,10 +5,26 @@
 An unofficial CLI/REPL for [Toss Securities Open API](https://developers.tossinvest.com/docs) —
 quotes, charts, portfolio, and order placement from your terminal.
 
-> **Official Open API only.** This tool does not reverse-engineer the app's private API,
-> so it is conservative about ToS and account safety. Features the official API does not
-> expose (investor flows, popularity rankings, AI signals, realtime push) are intentionally
-> out of scope. For AI-agent usage conventions, see [AGENTS.md](AGENTS.md).
+## Why this tool — official API only
+
+Unofficial Toss tools come in two kinds: those built on the **official Open API**, and
+those that **reverse-engineer the app's private API**. The latter look broader, at a cost.
+This tool calls the official Open API exclusively.
+
+| | **tossinvest-cli** | private-API tools |
+|---|---|---|
+| Data source | Official Open API (credentials you issued) | App's private API |
+| ToS / account risk | Official path — **no grounds for sanctions** | ToS-violation exposure, ban risk |
+| Auth | OAuth2 client credentials (official) | Token extraction, unofficial |
+| On API changes | Follows versioned official spec | May break without notice |
+| Coverage | 100% of official surface + client-side features (charts, dashboard, watchlist, ledger) | Broader, but all unofficial |
+
+Layered trade safety on top: `--dry-run` preview → confirmation prompt →
+`--confirm-high-value` for ₩100M+ → per-action kill switches (`TOSS_NO_*`) →
+auto idempotency keys → local trade ledger. Practice risk-free with `--sim`.
+
+Features absent from the official API (investor flows, rankings, AI signals, realtime
+push) are intentionally out of scope. For AI-agent conventions, see [AGENTS.md](AGENTS.md).
 
 ## Install
 
