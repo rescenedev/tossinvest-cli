@@ -24,8 +24,8 @@ from ..sim import SimClient, reset_state, sim_config
 from .. import render
 from ._common import AppState, get_state
 
-EXIT_WORDS = {"exit", "quit", ":exit", ":quit", ":q"}
-HELP_WORDS = {"help", ":help", "?", ":?"}
+EXIT_WORDS = {"exit", "quit", "q", ":exit", ":quit", ":q", "/exit", "/quit", "/q", "/bye"}
+HELP_WORDS = {"help", ":help", "?", ":?", "/help", "/?"}
 HISTORY_FILE = CONFIG_DIR / "repl_history"
 
 # 그룹/명령 숏컷. 예) `m p 005930` → `market price 005930`
@@ -105,14 +105,20 @@ def run_repl(ctx: typer.Context) -> None:
     _print_banner(config, session_state.sim)
     prompt = _make_prompt(command)
 
+    interrupted = False  # 직전 입력이 Ctrl-C 였는지 (연속 두 번이면 종료)
     try:
         while True:
             try:
                 line = prompt("toss> ")
             except EOFError:  # Ctrl-D
                 break
-            except KeyboardInterrupt:  # Ctrl-C: 현재 입력만 취소
+            except KeyboardInterrupt:  # Ctrl-C: 한 번은 입력 취소, 연속 두 번이면 종료
+                if interrupted:
+                    break
+                interrupted = True
+                render.console.print("[dim]한 번 더 Ctrl-C 를 누르면 종료합니다. (또는 exit)[/dim]")
                 continue
+            interrupted = False
 
             line = line.strip()
             if not line:
@@ -126,7 +132,10 @@ def run_repl(ctx: typer.Context) -> None:
                 if _handle_meta(line, session_state):
                     continue
 
-            _dispatch(command, line, session_state)
+            try:
+                _dispatch(command, line, session_state)
+            except KeyboardInterrupt:  # 실행 중 Ctrl-C: 해당 명령만 중단
+                render.console.print("[dim]명령을 중단했습니다.[/dim]")
     finally:
         client.close()
         render.console.print("[dim]세션을 종료합니다.[/dim]")
@@ -305,7 +314,7 @@ def _print_help(command) -> None:
             (":tick [%]", "모의 시세 이동 (sim 전용, 기본 +1%) → 손익 변화"),
             (":reset", "시뮬레이션 상태 초기화 (sim 전용)"),
             (":clear", "화면 지우기"),
-            ("exit / quit / Ctrl-D", "종료"),
+            ("exit · /quit · q", "종료 (Ctrl-D, Ctrl-C 두 번도 동일)"),
         ],
     )
     render.table(

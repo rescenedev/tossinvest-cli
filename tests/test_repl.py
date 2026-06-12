@@ -101,3 +101,10 @@ def test_completion_tree_has_groups_and_meta():
     assert "price" in tree["market"]
     assert "order" in tree and "buy" in tree["order"]
     assert ":account" in tree
+
+
+def test_exit_words_include_slash_variants():
+    from toss_cli.cli.repl import EXIT_WORDS, HELP_WORDS
+
+    assert {"/quit", "/exit", "/q", "q", "exit", "quit"} <= EXIT_WORDS
+    assert {"/help", "/?"} <= HELP_WORDS
