@@ -32,6 +32,11 @@ dependencies = [
     "prompt_toolkit>=3.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/rescenedev/tossinvest-cli"
+Repository = "https://github.com/rescenedev/tossinvest-cli"
+Issues = "https://github.com/rescenedev/tossinvest-cli/issues"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
