@@ -3,7 +3,7 @@ name: PyPI 다운로드 텔레그램 리포트
 # 매일 09:00 KST (00:00 UTC) 에 pypistats 집계를 텔레그램으로 전송.
 # 사전 설정 (repo Settings → Secrets and variables → Actions):
 #   TELEGRAM_BOT_TOKEN  — @BotFather 로 만든 봇 토큰
-#   TELEGRAM_CHAT_ID    — 받을 채팅 ID
+#   TELEGRAM_CHAT_ID    — 받을 채팅/그룹 ID
 # 수동 실행: Actions 탭 → 이 워크플로 → Run workflow
 
 on:
@@ -28,17 +28,15 @@ jobs:
 
           recent=$(curl -sf "https://pypistats.org/api/packages/$PKG/recent" || echo "")
           if [ -z "$recent" ]; then
-            text="📦 $PKG — pypistats 집계가 아직 없습니다 (신규 패키지는 1~2일 지연)."
+            text=$(printf '📦 %s — pypistats 집계가 아직 없습니다 (신규 패키지는 1~2일 지연).' "$PKG")
           else
             day=$(echo "$recent"   | jq -r '.data.last_day')
             week=$(echo "$recent"  | jq -r '.data.last_week')
             month=$(echo "$recent" | jq -r '.data.last_month')
             version=$(curl -sf "https://pypi.org/pypi/$PKG/json" | jq -r '.info.version')
             stars=$(curl -sf "https://api.github.com/repos/rescenedev/$PKG" | jq -r '.stargazers_count // "-"')
-            text="📦 *$PKG* v$version
-어제: *${day}* 회 · 7일: *${week}* 회 · 30일: *${month}* 회
-⭐ GitHub stars: ${stars}
-https://pypistats.org/packages/$PKG"
+            text=$(printf '📦 *%s* v%s\n어제: *%s* 회 · 7일: *%s* 회 · 30일: *%s* 회\n⭐ GitHub stars: %s\nhttps://pypistats.org/packages/%s' \
+              "$PKG" "$version" "$day" "$week" "$month" "$stars" "$PKG")
           fi
 
           curl -sf "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
@@ -46,5 +44,3 @@ https://pypistats.org/packages/$PKG"
             -d parse_mode="Markdown" \
             --data-urlencode text="$text" > /dev/null
           echo "전송 완료"
-
-# touch: workflow_dispatch 재인덱싱
