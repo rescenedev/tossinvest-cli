@@ -9,7 +9,7 @@
 ## 설치
 
 ```bash
-pip install tossinvest-cli      # 또는: uv tool install tossinvest-cli
+uv tool install tossinvest-cli      # 또는: pip install tossinvest-cli
 ```
 
 설치하면 `toss` 명령이 등록됩니다. (또는 `python -m toss_cli` 로도 실행 가능)
