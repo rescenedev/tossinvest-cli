@@ -92,3 +92,32 @@ def test_chart_renders_candlestick(capsys):
     ]})
     out = capsys.readouterr().out
     assert "005930" in out and "기간 등락" in out
+
+
+def _sample_candles(n=30, base=100.0):
+    out = []
+    for i in range(n):
+        o = base + i
+        out.append({"timestamp": f"2026-05-{(i % 28) + 1:02d}T00:00:00", "openPrice": str(o),
+                    "highPrice": str(o + 2), "lowPrice": str(o - 2), "closePrice": str(o + 1),
+                    "volume": str(1000 + i)})
+    return list(reversed(out))  # API 는 최신순
+
+
+def test_chart_with_ma_volume_and_avg(capsys):
+    from toss_cli.cli.market import _render_chart
+
+    _render_chart("005930", "1d", {"candles": _sample_candles()},
+                  ma_periods=(5, 20), show_volume=True, avg_price="110")
+    out = capsys.readouterr().out
+    assert "MA5" in out and "MA20" in out
+    assert "거래량" in out
+    assert "평단" in out
+
+
+def test_chart_single_candle_no_volume_subplot(capsys):
+    from toss_cli.cli.market import _render_chart
+
+    _render_chart("SPCX", "1d", {"candles": _sample_candles(1)})
+    out = capsys.readouterr().out
+    assert "기간 등락" in out

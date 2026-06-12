@@ -30,13 +30,17 @@ def price(
 
 def _watch_prices(client, symbols: list[str], interval: float) -> None:
     """현재가를 주기적으로 다시 그린다. Ctrl-C 로 종료."""
+    _watch(lambda: _render_prices(market_data.get_prices(client, symbols)), interval)
+
+
+def _watch(draw, interval: float) -> None:
+    """draw() 를 주기적으로 다시 실행. Ctrl-C 로 종료."""
     import time
 
     try:
         while True:
-            data = market_data.get_prices(client, symbols)
             render.console.clear()
-            _render_prices(data)
+            draw()
             render.console.print(f"[dim]{interval:g}초 간격 갱신 중 — Ctrl-C 로 종료[/dim]")
             time.sleep(interval)
     except KeyboardInterrupt:
@@ -88,11 +92,43 @@ def chart(
     interval: str = typer.Option("1d", "--interval", "-i", help="1m | 1d"),
     count: int = typer.Option(60, "--count", "-n", help="캔들 수"),
     before: str = typer.Option(None, "--before", help="기준 시각 (ISO8601)"),
+    ma: str = typer.Option("5,20", "--ma", help="이동평균 기간 (쉼표 구분, 빈 문자열이면 끔)"),
+    volume: bool = typer.Option(True, "--volume/--no-volume", help="거래량 서브차트"),
+    watch: float = typer.Option(None, "--watch", "-w", help="N초 간격 갱신 (Ctrl-C 종료)"),
 ) -> None:
-    """캔들 차트를 터미널에 그려서 추세 확인."""
-    with open_client(ctx) as (client, _):
-        data = market_data.get_candles(client, symbol, interval, count, before, None)
-    output(ctx, data, lambda d: _render_chart(symbol, interval, d))
+    """캔들 차트를 터미널에 그려서 추세 확인 (이동평균·거래량·평단선 포함)."""
+    ma_periods = tuple(int(p) for p in ma.split(",") if p.strip().isdigit())
+    with open_client(ctx) as (client, config):
+        avg_price = _holding_avg_price(client, config, symbol)
+
+        def fetch():
+            return market_data.get_candles(client, symbol, interval, count, before, None)
+
+        if watch:
+            _watch(lambda: _render_chart(
+                symbol, interval, fetch(),
+                ma_periods=ma_periods, show_volume=volume, avg_price=avg_price,
+            ), max(1.0, watch))
+            return
+        data = fetch()
+    output(ctx, data, lambda d: _render_chart(
+        symbol, interval, d, ma_periods=ma_periods, show_volume=volume, avg_price=avg_price))
+
+
+def _holding_avg_price(client, config, symbol: str) -> str | None:
+    """보유 종목이면 평단가 반환 (계좌 미설정/미보유/조회 실패 시 None)."""
+    from ..api import account as account_api
+
+    if config.account_seq is None:
+        return None
+    try:
+        holdings = account_api.get_holdings(client, config.account_seq, symbol)
+        for item in (holdings or {}).get("items", []):
+            if item.get("symbol") == symbol.upper() or item.get("symbol") == symbol:
+                return item.get("averagePurchasePrice")
+    except Exception:
+        return None
+    return None
 
 
 @app.command("limits")
@@ -154,8 +190,19 @@ def _render_candles(data: Any) -> None:
         render.console.print(f"[dim]다음 페이지: --before {data['nextBefore']}[/dim]")
 
 
-def _render_chart(symbol: str, interval: str, data: Any) -> None:
-    """plotext 캔들스틱 차트 + 기간 등락 요약. 상승=빨강, 하락=파랑 (한국식)."""
+_MA_COLORS = ("orange", "yellow", "green", "cyan")
+
+
+def _render_chart(
+    symbol: str,
+    interval: str,
+    data: Any,
+    *,
+    ma_periods: tuple[int, ...] = (5, 20),
+    show_volume: bool = True,
+    avg_price: str | None = None,
+) -> None:
+    """plotext 캔들스틱 + 이동평균 + 거래량 + 평단선. 상승=빨강, 하락=파랑 (한국식)."""
     from decimal import Decimal
 
     import plotext as plt
@@ -167,35 +214,84 @@ def _render_chart(symbol: str, interval: str, data: Any) -> None:
 
     stamps = [render.short_dt(c.get("timestamp")) for c in candles]  # "YYYY-MM-DD HH:MM"
     if interval == "1m":
-        dates = [s[11:16] for s in stamps]              # "HH:MM"
+        dates = [s[11:16] for s in stamps]                   # "HH:MM"
     else:
         dates = [s[5:10].replace("-", "/") for s in stamps]  # "MM/DD"
+    closes = [float(c["closePrice"]) for c in candles]
     series = {
         "Open": [float(c["openPrice"]) for c in candles],
         "High": [float(c["highPrice"]) for c in candles],
         "Low": [float(c["lowPrice"]) for c in candles],
-        "Close": [float(c["closePrice"]) for c in candles],
+        "Close": closes,
     }
+    volumes = [float(c.get("volume") or 0) for c in candles]
+    draw_volume = show_volume and any(volumes) and len(candles) > 1
+    width = min(render.console.width or 100, 110)
+    date_form = "H:M" if interval == "1m" else "m/d"
 
     plt.clear_figure()
+    if draw_volume:
+        plt.subplots(2, 1)
+        plt.subplot(1, 1)
+        plt.subplot(1, 1).plotsize(width, 15)
+
     plt.theme("clear")
-    plt.date_form("H:M" if interval == "1m" else "m/d")
+    plt.date_form(date_form)
     plt.candlestick(dates, series, colors=["red", "blue"])
-    width = min(render.console.width or 100, 110)
-    plt.plotsize(width, 22)
+
+    # 이동평균선 오버레이 (기간이 캔들 수보다 길면 생략)
+    for period, color in zip(ma_periods, _MA_COLORS):
+        if period >= 2 and len(closes) >= period:
+            ma_values = [
+                sum(closes[i - period + 1 : i + 1]) / period
+                for i in range(period - 1, len(closes))
+            ]
+            plt.plot(dates[period - 1 :], ma_values, label=f"MA{period}", color=color)
+
+    # 보유 평단선 — 가격 범위에서 크게 벗어나면 차트가 짜부되므로 생략 (요약에는 표시)
+    if avg_price:
+        try:
+            avg = float(avg_price)
+            lows, highs = min(series["Low"]), max(series["High"])
+            if lows * 0.85 <= avg <= highs * 1.15:
+                plt.hline(avg, "magenta")
+        except ValueError:
+            pass
+
     first, last = Decimal(candles[0]["closePrice"]), Decimal(candles[-1]["closePrice"])
     change = (last - first) / first * 100 if first else Decimal(0)
     plt.title(f"{symbol}  {interval} x{len(candles)}")
+
+    if draw_volume:
+        # 거래량 서브차트 — 양봉 빨강 / 음봉 파랑
+        up = [v if series["Close"][i] >= series["Open"][i] else 0 for i, v in enumerate(volumes)]
+        down = [v if series["Close"][i] < series["Open"][i] else 0 for i, v in enumerate(volumes)]
+        plt.subplot(2, 1)
+        plt.subplot(2, 1).plotsize(width, 8)
+        plt.theme("clear")
+        plt.date_form(date_form)
+        plt.bar(dates, up, color="red")
+        plt.bar(dates, down, color="blue")
+        plt.title("거래량")
+
     print(plt.build())
 
     high = max(Decimal(c["highPrice"]) for c in candles)
     low = min(Decimal(c["lowPrice"]) for c in candles)
     color = "red" if change > 0 else "blue" if change < 0 else "white"
-    render.console.print(
+    summary = (
         f"기간 등락 [{color}]{change:+.2f}%[/{color}]"
         f" · 종가 {render.fmt_decimal(first)} → {render.fmt_decimal(last)}"
         f" · 고가 {render.fmt_decimal(high)} · 저가 {render.fmt_decimal(low)}"
     )
+    if avg_price:
+        diff = (last - Decimal(avg_price)) / Decimal(avg_price) * 100
+        dcolor = "red" if diff > 0 else "blue" if diff < 0 else "white"
+        summary += (
+            f" · [magenta]평단 {render.fmt_decimal(avg_price)}[/magenta]"
+            f" ([{dcolor}]{diff:+.2f}%[/{dcolor}])"
+        )
+    render.console.print(summary)
 
 
 def _render_limits(symbol: str, data: dict) -> None:
