@@ -158,3 +158,19 @@ def test_429_retries_then_succeeds(config, monkeypatch):
         data = client.get("/api/v1/prices", params={"symbols": "005930"})
     assert data[0]["symbol"] == "005930"
     assert route.call_count == 2
+
+
+@respx.mock
+def test_retry_after_capped(config, monkeypatch):
+    # 비정상적으로 큰 Retry-After 헤더도 상한(30초)으로 캡
+    _mock_token(respx)
+    waits = []
+    monkeypatch.setattr("toss_cli.client.time.sleep", lambda s: waits.append(s))
+    route = respx.get(f"{BASE}/api/v1/prices")
+    route.side_effect = [
+        httpx.Response(429, headers={"Retry-After": "99999"}, json={"error": {"code": "r", "message": "x"}}),
+        httpx.Response(200, json={"result": []}),
+    ]
+    with TossClient(config) as client:
+        client.get("/api/v1/prices", params={"symbols": "005930"})
+    assert waits == [30.0]

@@ -302,6 +302,17 @@ class SimClient:
         symbol = body["symbol"]
         side = body["side"]
         order_type = body["orderType"]
+
+        # 매도는 보유 수량 내에서만 — 초과 매도로 현금이 부풀지 않게 거부 (실 API 동일)
+        if side == "SELL":
+            held = Decimal(self._state["positions"].get(symbol, {}).get("quantity", "0"))
+            want = Decimal(body.get("quantity") or "0")
+            if want > held:
+                raise TossApiError(
+                    400, "insufficient-quantity",
+                    f"[SIM] 매도 가능 수량({held})을 초과했습니다: {want}",
+                )
+
         _, cur = price_for(symbol)
         self._state["counter"] += 1
         order_id = f"SIM-{self._state['counter']:06d}"

@@ -141,7 +141,7 @@ def test_bollinger_bands_shape():
     closes = [float(100 + (i % 5)) for i in range(40)]
     upper, lower = _bollinger(closes, 20, 2.0)
     assert len(upper) == len(lower) == 40 - 20 + 1
-    assert all(u >= l for u, l in zip(upper, lower))
+    assert all(up >= lo for up, lo in zip(upper, lower))
 
 
 def test_period_preset_mapping():
@@ -159,3 +159,11 @@ def test_chart_with_rsi_and_bb(capsys):
                   ma_periods=(), show_volume=True, rsi_period=14, bb_period=20)
     out = capsys.readouterr().out
     assert "RSI" in out and "BB" in out
+
+
+def test_limits_us_no_band_notice():
+    out = _capture(_render_limits, "PLTR", {
+        "timestamp": "2026-06-12T22:00:00", "upperLimitPrice": None,
+        "lowerLimitPrice": None, "currency": "USD",
+    })
+    assert "가격제한폭" in out

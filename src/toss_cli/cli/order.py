@@ -14,7 +14,6 @@ import typer
 
 from ..api import order
 from ..config import flag_enabled
-from ..errors import TossApiError
 from .. import render
 from ._common import get_state, open_client, output
 
@@ -99,6 +98,14 @@ def _place(
         render.print_warning("dry-run: 실제 주문을 전송하지 않습니다. 요청 본문:")
         render.print_json(body)
         return
+
+    # 1억 이상 KR 주문은 플래그 없이는 서버도 거부하므로 전송 전에 차단.
+    if (
+        estimated is not None and estimated >= HIGH_VALUE_KRW
+        and order._is_kr_symbol(symbol) and not confirm_high_value
+    ):
+        render.print_error("1억원 이상 주문은 --confirm-high-value 플래그가 필요합니다.")
+        raise typer.Exit(code=2)
 
     if not yes and not sim:  # 시뮬레이션은 가짜 거래이므로 확인 생략
         confirmed = typer.confirm(f"위 내용으로 {side_kr} 주문을 전송할까요?")
@@ -211,6 +218,14 @@ def modify_order(
     yes: bool = typer.Option(False, "--yes", "-y", help="확인 프롬프트 건너뛰기"),
 ) -> None:
     """주문 정정."""
+    try:  # 확인 프롬프트 전에 본문 규칙 검증
+        order.build_modify_body(
+            order_type=order_type, quantity=quantity, price=price,
+            confirm_high_value=confirm_high_value,
+        )
+    except order.OrderValidationError as exc:
+        render.print_error(str(exc))
+        raise typer.Exit(code=2)
     if not yes and not get_state(ctx).sim and not typer.confirm(f"주문 {order_id} 을(를) 정정할까요?"):
         render.print_warning("취소했습니다.")
         raise typer.Exit(code=0)

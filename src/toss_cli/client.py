@@ -124,12 +124,16 @@ def _drop_none(params: Mapping[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in params.items() if v is not None}
 
 
+MAX_RETRY_WAIT_SECONDS = 30.0
+
+
 def _retry_after_seconds(headers: httpx.Headers, default: float = 1.0) -> float:
+    """Retry-After 대기 시간. 서버 값이 비정상적으로 커도 상한으로 캡."""
     raw = headers.get("Retry-After")
     if not raw:
         return default
     try:
-        return max(0.0, float(raw))
+        return min(max(0.0, float(raw)), MAX_RETRY_WAIT_SECONDS)
     except ValueError:
         return default
 

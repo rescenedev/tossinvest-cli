@@ -5,6 +5,7 @@ from decimal import Decimal
 import pytest
 
 from toss_cli import sim as sim_mod
+from toss_cli.errors import TossApiError
 from toss_cli.sim import SimClient, sim_config
 
 
@@ -131,3 +132,16 @@ def test_persistence_across_clients():
     c2 = _client()  # 새 클라이언트가 디스크 상태를 읽음
     holdings = c2.get("/api/v1/holdings", account_seq=1)
     assert holdings["items"][0]["quantity"] == "5"
+
+
+def test_oversell_rejected():
+    # 보유 수량 초과 매도는 거부 — 현금 부풀림 방지 (실 API 와 동일하게 에러)
+    c = _client()
+    c.post("/api/v1/orders", json_body={"symbol": "005930", "side": "BUY",
+           "orderType": "MARKET", "quantity": "10"}, account_seq=1)
+    cash_before = c.get("/api/v1/buying-power", params={"currency": "KRW"}, account_seq=1)
+    with pytest.raises(TossApiError):
+        c.post("/api/v1/orders", json_body={"symbol": "005930", "side": "SELL",
+               "orderType": "MARKET", "quantity": "999"}, account_seq=1)
+    cash_after = c.get("/api/v1/buying-power", params={"currency": "KRW"}, account_seq=1)
+    assert cash_before == cash_after  # 거부된 주문은 현금 불변

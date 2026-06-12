@@ -67,3 +67,18 @@ def test_tick_size_warning_for_misaligned_kr_price():
 def test_no_tick_warning_for_aligned_price():
     result = runner.invoke(app, ["order", "buy", "005930", "-q", "1", "-p", "300000", "--dry-run"])
     assert "호가 단위" not in result.output
+
+
+def test_high_value_order_blocked_before_send():
+    # 3억 주문 + 플래그 없음 → 전송 전에 차단 (네트워크 없이 exit 2)
+    result = runner.invoke(
+        app, ["order", "buy", "005930", "-q", "1000", "-p", "300000", "-y"]
+    )
+    assert result.exit_code == 2
+    assert "confirm-high-value" in result.output
+
+
+def test_modify_validates_before_prompt():
+    result = runner.invoke(app, ["order", "modify", "SIM-1", "-t", "LIMIT", "-q", "5", "-y"])
+    assert result.exit_code == 2
+    assert "price" in result.output

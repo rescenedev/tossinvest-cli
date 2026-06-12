@@ -397,6 +397,10 @@ def _render_limits(symbol: str, data: dict) -> None:
             ("기준시각", render.short_dt(data.get("timestamp"))),
         ],
     )
+    if not data.get("upperLimitPrice") and not data.get("lowerLimitPrice"):
+        render.console.print(
+            "[dim]가격제한폭은 한국 시장 제도입니다 — 미국 주식 등은 상/하한가가 없습니다.[/dim]"
+        )
 
 
 def _render_orderbook(symbol: str, data: dict) -> None:

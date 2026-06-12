@@ -9,7 +9,7 @@ import typer
 
 from ..api import account, order
 from .. import render
-from ._common import get_state, open_client, output
+from ._common import open_client, output
 
 app = typer.Typer(help="계좌/자산 (목록/보유/매수가능금액/매도가능수량)")
 

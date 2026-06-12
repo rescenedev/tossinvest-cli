@@ -90,3 +90,20 @@ def test_kr_tick_size_bands():
 def test_invalid_side():
     with pytest.raises(order.OrderValidationError):
         order.build_order_body(symbol="005930", side="HOLD", order_type="MARKET", quantity="1")
+
+
+def test_quantity_must_be_positive_integer():
+    for bad in ("-100", "abc", "0", "1.5"):
+        with pytest.raises(order.OrderValidationError):
+            order.build_order_body(
+                symbol="005930", side="BUY", order_type="MARKET", quantity=bad
+            )
+
+
+def test_modify_body_validates_price_rules():
+    with pytest.raises(order.OrderValidationError):
+        order.build_modify_body(order_type="LIMIT", quantity="1", price=None)
+    with pytest.raises(order.OrderValidationError):
+        order.build_modify_body(order_type="MARKET", quantity="1", price="100")
+    body = order.build_modify_body(order_type="LIMIT", quantity="5", price="71000")
+    assert body == {"orderType": "LIMIT", "quantity": "5", "price": "71000"}

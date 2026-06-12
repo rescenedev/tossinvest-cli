@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from ..client import TossClient
@@ -18,6 +19,40 @@ TIME_IN_FORCE = ("DAY", "CLS")
 
 class OrderValidationError(ValueError):
     """주문 파라미터 조합이 잘못된 경우 (서버 호출 전 검증)."""
+
+
+def _require_positive_integer(quantity: str) -> None:
+    """스펙(OrderCreateRequest.quantity: ^\\d+$, 1 이상) 사전 검증."""
+    if not quantity.isdigit() or int(quantity) < 1:
+        raise OrderValidationError(f"quantity 는 1 이상의 정수여야 합니다: {quantity}")
+
+
+def build_modify_body(
+    *,
+    order_type: str,
+    quantity: str | None = None,
+    price: str | None = None,
+    confirm_high_value: bool = False,
+) -> dict[str, Any]:
+    """정정 요청 본문 구성 + 검증 (생성과 동일한 LIMIT/MARKET 가격 규칙)."""
+    order_type = order_type.upper()
+    if order_type not in ORDER_TYPES:
+        raise OrderValidationError(f"orderType 은 {ORDER_TYPES} 중 하나여야 합니다: {order_type}")
+    if order_type == "LIMIT" and not price:
+        raise OrderValidationError("LIMIT 정정은 price 가 필수입니다.")
+    if order_type == "MARKET" and price:
+        raise OrderValidationError("MARKET 정정에는 price 를 전달할 수 없습니다.")
+    if quantity is not None:
+        _require_positive_integer(quantity)
+
+    body: dict[str, Any] = {"orderType": order_type}
+    if quantity is not None:
+        body["quantity"] = quantity
+    if price is not None:
+        body["price"] = price
+    if confirm_high_value:
+        body["confirmHighValueOrder"] = True
+    return body
 
 
 def _is_kr_symbol(symbol: str) -> bool:
@@ -37,23 +72,19 @@ KR_TICK_BANDS: tuple[tuple[int, int], ...] = (
 KR_TICK_MAX = 1_000
 
 
-def kr_tick_size(price: "Decimal") -> "Decimal":
+def kr_tick_size(price: Decimal) -> Decimal:
     """KRX 주식 가격대별 호가 단위."""
-    from decimal import Decimal
-
     for upper, tick in KR_TICK_BANDS:
         if price < upper:
             return Decimal(tick)
     return Decimal(KR_TICK_MAX)
 
 
-def kr_tick_misaligned(symbol: str, price: str | None) -> "Decimal | None":
+def kr_tick_misaligned(symbol: str, price: str | None) -> Decimal | None:
     """KR 지정가가 호가 단위에 맞지 않으면 해당 단위를 반환 (맞으면 None).
 
     ETF 등 단위가 다른 상품이 있어 차단 근거가 아닌 경고 용도.
     """
-    from decimal import Decimal, InvalidOperation
-
     if not price or not _is_kr_symbol(symbol):
         return None
     try:
@@ -92,6 +123,9 @@ def build_order_body(
 
     if (quantity is None) == (order_amount is None):
         raise OrderValidationError("quantity 또는 order_amount 중 정확히 하나를 지정해야 합니다.")
+
+    if quantity is not None:
+        _require_positive_integer(quantity)
 
     if order_amount is not None and order_type != "MARKET":
         raise OrderValidationError("금액 기반 주문(order_amount)은 MARKET 만 허용됩니다.")
@@ -204,14 +238,11 @@ def modify_order(
     price: str | None = None,
     confirm_high_value: bool = False,
 ) -> Any:
-    """주문 정정."""
-    body: dict[str, Any] = {"orderType": order_type.upper()}
-    if quantity is not None:
-        body["quantity"] = quantity
-    if price is not None:
-        body["price"] = price
-    if confirm_high_value:
-        body["confirmHighValueOrder"] = True
+    """주문 정정. 본문 규칙 위반 시 OrderValidationError."""
+    body = build_modify_body(
+        order_type=order_type, quantity=quantity, price=price,
+        confirm_high_value=confirm_high_value,
+    )
     return client.post(
         f"/api/v1/orders/{order_id}/modify", json_body=body, account_seq=account_seq
     )
