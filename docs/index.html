@@ -218,6 +218,29 @@ h2 {
 .cheat-row .v .red { color: #ff6b6b; }
 @media (max-width: 600px) { .cheat-row { grid-template-columns: 1fr; } .cheat-row .k { padding-bottom: 2px; } .cheat-row .v { padding-top: 0; } }
 
+/* ───────── 전체 명령어 ───────── */
+.cmd-grid { columns: 3; column-gap: 16px; margin-top: 56px; }
+@media (max-width: 960px) { .cmd-grid { columns: 2; } }
+@media (max-width: 620px) { .cmd-grid { columns: 1; } }
+.cmd-group {
+  break-inside: avoid; margin-bottom: 16px;
+  background: var(--card); border: 1px solid rgba(255,255,255,.06);
+  border-radius: 20px; padding: 22px 24px 14px;
+}
+.cmd-group h3 {
+  font-family: var(--mono); font-size: 15px; font-weight: 600;
+  color: #5ea2ff; margin-bottom: 4px; display: flex; align-items: baseline; gap: 10px;
+}
+.cmd-group h3 span { font-family: var(--sans); font-size: 12.5px; font-weight: 400; color: var(--ink-3); }
+.cmd-row {
+  display: grid; grid-template-columns: 122px 1fr; gap: 10px;
+  padding: 9px 0; border-top: 1px solid rgba(255,255,255,.06);
+  font-size: 13px; align-items: baseline;
+}
+.cmd-row:first-of-type { border-top: 0; margin-top: 8px; }
+.cmd-row code { font-family: var(--mono); font-size: 12.5px; color: var(--ink); white-space: nowrap; }
+.cmd-row span { color: var(--ink-2); font-weight: 300; }
+
 /* ───────── 안전장치 ───────────── */
 .safety-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 56px; }
 @media (max-width: 760px) { .safety-grid { grid-template-columns: 1fr; } }
@@ -274,6 +297,7 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
     <div class="nav-links">
       <a href="#features">기능</a>
       <a href="#shortcuts">숏컷</a>
+      <a href="#commands">명령어</a>
       <a href="#safety">안전장치</a>
       <a href="https://github.com/rescenedev/tossinvest-cli">GitHub</a>
       <a class="nav-cta" href="https://pypi.org/project/tossinvest-cli/">설치</a>
@@ -353,6 +377,65 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
       <div class="cheat-row"><div class="k">m ob 005930</div><div class="v">호가창 (market orderbook)</div></div>
       <div class="cheat-row"><div class="k">a bp</div><div class="v">매수 가능 금액 (account buying-power)</div></div>
       <div class="cheat-row"><div class="k">:tick 5</div><div class="v">모의 시세 +5% — <b>sim 전용</b></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 전체 명령어 ═══════════ -->
+<section id="commands">
+  <div class="sec-inner">
+    <div class="sec-head reveal"><h2>전체 명령어.</h2></div>
+    <p class="sec-sub reveal">모든 명령은 단발 실행과 REPL 안에서 동일하게 동작합니다.<br>각 명령 뒤에 <code style="font-family:var(--mono); font-size:.85em;">--help</code> 를 붙이면 전체 옵션이 나옵니다.</p>
+    <div class="cmd-grid">
+      <div class="cmd-group reveal">
+        <h3>market <span>시세</span></h3>
+        <div class="cmd-row"><code>price</code><span>현재가 — 여러 종목 동시 조회</span></div>
+        <div class="cmd-row"><code>orderbook</code><span>호가창</span></div>
+        <div class="cmd-row"><code>trades</code><span>최근 체결 내역</span></div>
+        <div class="cmd-row"><code>candles</code><span>캔들 차트 (1m | 1d)</span></div>
+        <div class="cmd-row"><code>limits</code><span>상한가 · 하한가</span></div>
+      </div>
+      <div class="cmd-group reveal">
+        <h3>order <span>주문</span></h3>
+        <div class="cmd-row"><code>buy</code><span>매수 — 지정가 · 시장가 · 금액 기반(US)</span></div>
+        <div class="cmd-row"><code>sell</code><span>매도</span></div>
+        <div class="cmd-row"><code>list</code><span>주문 목록 (OPEN | CLOSED)</span></div>
+        <div class="cmd-row"><code>get</code><span>주문 단건 조회</span></div>
+        <div class="cmd-row"><code>modify</code><span>정정</span></div>
+        <div class="cmd-row"><code>cancel</code><span>취소</span></div>
+        <div class="cmd-row"><code>commissions</code><span>매매 수수료</span></div>
+      </div>
+      <div class="cmd-group reveal">
+        <h3>account <span>계좌 · 자산</span></h3>
+        <div class="cmd-row"><code>list</code><span>계좌 목록 (accountSeq 확인)</span></div>
+        <div class="cmd-row"><code>holdings</code><span>보유 주식 — 손익 · 수익률</span></div>
+        <div class="cmd-row"><code>buying-power</code><span>매수 가능 금액 (KRW | USD)</span></div>
+        <div class="cmd-row"><code>sellable</code><span>매도 가능 수량</span></div>
+      </div>
+      <div class="cmd-group reveal">
+        <h3>stock <span>종목 정보</span></h3>
+        <div class="cmd-row"><code>info</code><span>기본 정보 — 시장 · ISIN · 상장일</span></div>
+        <div class="cmd-row"><code>warnings</code><span>매수 유의사항</span></div>
+      </div>
+      <div class="cmd-group reveal">
+        <h3>info <span>시장 정보</span></h3>
+        <div class="cmd-row"><code>fx</code><span>환율</span></div>
+        <div class="cmd-row"><code>calendar</code><span>거래 캘린더 (KR | US)</span></div>
+      </div>
+      <div class="cmd-group reveal">
+        <h3>auth <span>인증</span></h3>
+        <div class="cmd-row"><code>status</code><span>설정 확인 — 시크릿 마스킹</span></div>
+        <div class="cmd-row"><code>login</code><span>토큰 강제 발급</span></div>
+        <div class="cmd-row"><code>logout</code><span>토큰 캐시 삭제</span></div>
+      </div>
+      <div class="cmd-group reveal">
+        <h3>전역 <span>어디서나</span></h3>
+        <div class="cmd-row"><code>repl</code><span>대화형 셸 시작 (인자 없이 실행해도 동일)</span></div>
+        <div class="cmd-row"><code>-a, --account</code><span>계좌 지정</span></div>
+        <div class="cmd-row"><code>--json</code><span>원본 JSON 출력</span></div>
+        <div class="cmd-row"><code>--sim</code><span>시뮬레이션 모드</span></div>
+        <div class="cmd-row"><code>--dry-run</code><span>주문 전송 없이 미리보기 (buy · sell)</span></div>
+      </div>
     </div>
   </div>
 </section>
