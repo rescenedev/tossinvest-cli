@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tossinvest-cli"
-version = "0.2.1"
+version = "0.2.2"
 description = "토스증권 Open API CLI/REPL — 시세 조회부터 주문까지 (비공식)"
 readme = "README.md"
 requires-python = ">=3.11"

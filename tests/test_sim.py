@@ -145,3 +145,13 @@ def test_oversell_rejected():
                "orderType": "MARKET", "quantity": "999"}, account_seq=1)
     cash_after = c.get("/api/v1/buying-power", params={"currency": "KRW"}, account_seq=1)
     assert cash_before == cash_after  # 거부된 주문은 현금 불변
+
+
+def test_candles_follow_spec_shape():
+    # 스펙(CandlePageResponse): candles[{timestamp, openPrice, ..., closePrice}]
+    c = _client()
+    data = c.get("/api/v1/candles", params={"symbol": "005930", "count": 5})
+    assert len(data["candles"]) == 5
+    first = data["candles"][0]
+    for key in ("timestamp", "openPrice", "highPrice", "lowPrice", "closePrice", "volume"):
+        assert key in first

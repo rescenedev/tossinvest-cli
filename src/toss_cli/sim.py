@@ -216,11 +216,25 @@ class SimClient:
                 "lowerLimit": _money(price * Decimal("0.7"))}
 
     def _candles(self, symbol, count) -> dict:
+        # 스펙(CandlePageResponse) 형태 — 결정적 모의 캔들 (최신순, 일 단위 과거로)
+        from datetime import datetime, timedelta, timezone
+
         price, cur = self._quote(symbol)
-        items = [{"open": _money(price), "high": _money(price * Decimal("1.02")),
-                  "low": _money(price * Decimal("0.98")), "close": _money(price),
-                  "volume": str(10000 + i), "timestamp": _now()} for i in range(count)]
-        return {"symbol": symbol, "currency": cur, "items": items}
+        base_dt = datetime.now(timezone.utc)
+        candles = []
+        for i in range(count):
+            wobble = Decimal(1) + Decimal(((i * 7) % 9) - 4) / Decimal(100)  # ±4% 결정적 변동
+            close = price * wobble
+            candles.append({
+                "timestamp": (base_dt - timedelta(days=i)).isoformat(),
+                "openPrice": _money(close * Decimal("0.99")),
+                "highPrice": _money(close * Decimal("1.02")),
+                "lowPrice": _money(close * Decimal("0.97")),
+                "closePrice": _money(close),
+                "volume": str(10000 + i * 100),
+                "currency": cur,
+            })
+        return {"candles": candles, "nextBefore": None}
 
     def _stock(self, symbol) -> dict:
         _, cur = price_for(symbol)
