@@ -71,7 +71,7 @@ def candles(
     ctx: typer.Context,
     symbol: str = typer.Argument(..., help="종목 심볼"),
     interval: str = typer.Option("1d", "--interval", "-i", help="1m | 1d"),
-    count: int = typer.Option(None, "--count", "-n", help="조회 건수"),
+    count: int = typer.Option(30, "--count", "-n", help="조회 건수"),
     before: str = typer.Option(None, "--before", help="기준 시각 (ISO8601)"),
     adjusted: bool = typer.Option(None, "--adjusted/--no-adjusted", help="수정주가 여부"),
 ) -> None:

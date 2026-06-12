@@ -34,8 +34,8 @@ GROUP_ALIASES = {
     "a": "account", "o": "order", "au": "auth",
 }
 CMD_ALIASES = {
-    "market": {"p": "price", "ob": "orderbook", "t": "trades", "c": "candles",
-               "ch": "chart", "l": "limits"},
+    "market": {"p": "price", "ob": "orderbook", "t": "trades", "cd": "candles",
+               "ch": "chart", "c": "chart", "l": "limits"},
     "stock": {"i": "info", "w": "warnings"},
     "info": {"x": "fx", "cal": "calendar"},
     "account": {"l": "list", "h": "holdings", "bp": "buying-power", "se": "sellable"},
