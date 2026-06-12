@@ -103,14 +103,17 @@ def chart(
     volume: bool = typer.Option(True, "--volume/--no-volume", help="거래량 서브차트"),
     rsi: int = typer.Option(None, "--rsi", help="RSI 기간 (예: 14)"),
     bb: int = typer.Option(None, "--bb", help="볼린저밴드 기간 (예: 20, 승수 2)"),
-    period: str = typer.Option(None, "--period", "-P", help="기간 프리셋: 1w|1m|3m|6m|1y (일봉)"),
+    period: str = typer.Option(None, "--period", "-P", help="기간 프리셋: 1d(오늘·분봉)|1w|1m|3m|6m|1y (일봉)"),
     watch: float = typer.Option(None, "--watch", "-w", help="N초 간격 갱신 (Ctrl-C 종료)"),
 ) -> None:
     """캔들 차트를 터미널에 그려서 추세 확인 (이동평균·거래량·RSI·볼린저·평단선)."""
     ma_periods = tuple(int(p) for p in ma.split(",") if p.strip().isdigit())
     if period:
-        count = _period_to_count(period)
-        interval = "1d"
+        if period.lower() == "1d":  # 오늘 차트 = 1분봉 (count 상한 200 = 약 3시간 20분)
+            interval, count = "1m", 200
+        else:
+            count = _period_to_count(period)
+            interval = "1d"
     with open_client(ctx) as (client, config):
         avg_price = _holding_avg_price(client, config, symbol)
 
