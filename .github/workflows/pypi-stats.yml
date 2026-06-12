@@ -46,3 +46,5 @@ https://pypistats.org/packages/$PKG"
             -d parse_mode="Markdown" \
             --data-urlencode text="$text" > /dev/null
           echo "전송 완료"
+
+# touch: workflow_dispatch 재인덱싱
