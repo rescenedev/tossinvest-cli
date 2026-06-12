@@ -21,8 +21,11 @@ class OrderValidationError(ValueError):
 
 
 def _is_kr_symbol(symbol: str) -> bool:
-    """KRX 심볼 여부 (스펙: KRX 는 6자리 숫자, US 는 영문 티커)."""
-    return len(symbol) == 6 and symbol.isdigit()
+    """KRX 심볼 여부. 6자리 영숫자이며 숫자로 시작 (예: 005930, 0193T0).
+
+    US 는 영문 티커(영문 시작)라서 첫 글자로 구분된다.
+    """
+    return len(symbol) == 6 and symbol[0].isdigit() and symbol.isalnum()
 
 
 # KRX 주식 호가 단위 (가격 상한 미만 구간 → 단위). ETF/ELW 등은 단위가 다르므로

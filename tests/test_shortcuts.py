@@ -60,3 +60,24 @@ def test_portfolio_shortcut():
 
 def test_empty():
     assert expand_aliases([]) == []
+
+
+def test_us_ticker_bare_symbol():
+    assert expand_aliases(["AAPL"]) == ["market", "price", "AAPL"]
+    assert expand_aliases(["TSLL", "SPCX"]) == ["market", "price", "TSLL", "SPCX"]
+
+
+def test_us_ticker_buy_sell():
+    assert expand_aliases(["AAPL", "10"]) == ["order", "buy", "AAPL", "-q", "10", "-t", "MARKET"]
+    assert expand_aliases(["AAPL", "-5"]) == ["order", "sell", "AAPL", "-q", "5", "-t", "MARKET"]
+
+
+def test_alnum_kr_etf_code():
+    # 신형 ETF 코드 (예: 0193T0) — 숫자로 시작하는 6자리 영숫자
+    assert expand_aliases(["0193T0"]) == ["market", "price", "0193T0"]
+    assert expand_aliases(["0193T0", "100"]) == ["order", "buy", "0193T0", "-q", "100", "-t", "MARKET"]
+
+
+def test_lowercase_commands_not_treated_as_ticker():
+    assert expand_aliases(["market", "price", "005930"]) == ["market", "price", "005930"]
+    assert expand_aliases(["p"]) == ["account", "holdings"]

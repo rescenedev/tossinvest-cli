@@ -42,7 +42,8 @@ CMD_ALIASES = {
               "mod": "modify", "c": "cancel", "cm": "commissions"},
 }
 
-_SYMBOL_RE = re.compile(r"\d{6}")          # KR 종목코드 = 6자리 숫자
+# KR: 6자리 영숫자(숫자 시작, 예: 005930·0193T0) | US: 대문자 티커 (예: AAPL·BRK.B)
+_SYMBOL_RE = re.compile(r"[0-9][0-9A-Z]{5}|[A-Z][A-Z0-9.]{0,9}")
 _QTY_RE = re.compile(r"([+-]?)(\d{1,5})")  # 수량 (부호 + 1~5자리). 음수=매도
 _PRICE_RE = re.compile(r"\d+(\.\d+)?")
 

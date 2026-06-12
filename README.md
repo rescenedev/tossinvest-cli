@@ -90,7 +90,8 @@ toss> exit
 | `m p 005930` | `market price 005930` |
 | `o b 005930 -q 10 -p 70000` | `order buy ...` |
 
-그룹 약어: `m`=market, `s`=stock, `i`=info, `a`=account, `o`=order. 6자리 숫자는 종목코드로 인식됩니다.
+그룹 약어: `m`=market, `s`=stock, `i`=info, `a`=account, `o`=order.
+6자리 영숫자(005930, 0193T0)는 KR 종목코드, **대문자 티커(AAPL, TSLL)는 미국 종목**으로 인식됩니다.
 
 ### 메타 명령 / 동작
 
