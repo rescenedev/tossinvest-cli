@@ -86,3 +86,8 @@ def test_lowercase_commands_not_treated_as_ticker():
 def test_chart_shortcut():
     assert expand_aliases(["c", "005930"]) == ["market", "chart", "005930"]
     assert expand_aliases(["c", "AAPL", "-i", "1m"]) == ["market", "chart", "AAPL", "-i", "1m"]
+
+
+def test_overview_shortcut():
+    assert expand_aliases(["w", "005930"]) == ["market", "overview", "005930"]
+    assert expand_aliases(["w", "PLTR", "-w", "5"]) == ["market", "overview", "PLTR", "-w", "5"]

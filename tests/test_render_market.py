@@ -167,3 +167,38 @@ def test_limits_us_no_band_notice():
         "lowerLimitPrice": None, "currency": "USD",
     })
     assert "가격제한폭" in out
+
+
+def test_overview_renders_all_sections(capsys):
+    from toss_cli.cli.market import _render_overview
+
+    parts = {
+        "info": [{"name": "삼성전자", "market": "KOSPI", "securityType": "STOCK"}],
+        "price": [{"lastPrice": "324500", "currency": "KRW", "timestamp": "2026-06-12T20:00:00"}],
+        "limits": {"upperLimitPrice": "421500", "lowerLimitPrice": "227500"},
+        "candles": {"candles": _sample_candles(10)},
+        "orderbook": {"currency": "KRW",
+                      "asks": [{"price": "324500", "volume": "10"}] * 7,
+                      "bids": [{"price": "324000", "volume": "20"}] * 7},
+        "warnings": [{"warningType": "VI", "exchange": "KRX", "startDate": "2026-06-01", "endDate": None}],
+        "holdings": {"items": [{"symbol": "005930", "quantity": "100",
+                                "averagePurchasePrice": "300000",
+                                "profitLoss": {"amount": "2450000", "rate": "0.0816"},
+                                "dailyProfitLoss": {"rate": "0.012"},
+                                "marketValue": {"amount": "32450000"}}]},
+    }
+    with __import__("toss_cli").render.console.capture() as cap:
+        _render_overview("005930", parts)
+    out = cap.get() + capsys.readouterr().out  # rich 출력 + plotext print 출력
+    assert "삼성전자" in out and "현재가" in out
+    assert "보유" in out and "평단" in out
+    assert "호가" in out and "유의사항" in out
+
+
+def test_overview_partial_data_does_not_crash(capsys):
+    from toss_cli.cli.market import _render_overview
+
+    with __import__("toss_cli").render.console.capture() as cap:
+        _render_overview("PLTR", {"price": [{"lastPrice": "131", "currency": "USD"}]})
+    out = cap.get()
+    assert "PLTR" in out and "현재가" in out

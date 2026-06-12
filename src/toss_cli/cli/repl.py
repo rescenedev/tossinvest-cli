@@ -35,7 +35,7 @@ GROUP_ALIASES = {
 }
 CMD_ALIASES = {
     "market": {"p": "price", "ob": "orderbook", "t": "trades", "cd": "candles",
-               "ch": "chart", "c": "chart", "l": "limits"},
+               "ch": "chart", "c": "chart", "ov": "overview", "l": "limits"},
     "stock": {"i": "info", "w": "warnings"},
     "info": {"x": "fx", "cal": "calendar"},
     "account": {"l": "list", "h": "holdings", "bp": "buying-power", "se": "sellable"},
@@ -184,6 +184,10 @@ def expand_aliases(tokens: list[str]) -> list[str]:
     if first in ("c", "chart", "차트") and len(tokens) >= 2:
         return ["market", "chart", *tokens[1:]]
 
+    # 단독 숏컷: w <심볼> → 종목 원샷 대시보드
+    if first in ("w", "워치") and len(tokens) >= 2:
+        return ["market", "overview", *tokens[1:]]
+
     if _SYMBOL_RE.fullmatch(first):
         return _expand_symbol(tokens)
 
@@ -310,6 +314,7 @@ def _print_help(command) -> None:
         [
             ("p", "보유 종목 (수량/손익/매수일)"),
             ("c 005930", "캔들 차트 (추세 확인, c AAPL -i 1m 도 가능)"),
+            ("w 005930", "종목 대시보드 — 시세·보유·차트·호가·유의사항 한 화면"),
             ("m p 005930", "market price 005930 (그룹/명령 약어)"),
             ("005930", "현재가 조회"),
             ("005930 000660", "여러 종목 현재가"),

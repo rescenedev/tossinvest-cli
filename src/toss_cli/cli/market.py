@@ -146,6 +146,112 @@ def _holding_avg_price(client, config, symbol: str) -> str | None:
     return None
 
 
+@app.command("overview")
+def overview(
+    ctx: typer.Context,
+    symbol: str = typer.Argument(..., help="종목 심볼"),
+    watch: float = typer.Option(None, "--watch", "-w", help="N초 간격 갱신 (Ctrl-C 종료)"),
+) -> None:
+    """종목 원샷 대시보드 — 현재가·차트·호가·보유·유의사항을 한 화면에 (REPL: w 005930)."""
+    with open_client(ctx) as (client, config):
+        def draw():
+            _render_overview(symbol, _gather_overview(client, config, symbol))
+
+        if watch:
+            _watch(draw, max(1.0, watch))
+            return
+        parts = _gather_overview(client, config, symbol)
+    output(ctx, parts, lambda _d: _render_overview(symbol, _d))
+
+
+def _gather_overview(client, config, symbol: str) -> dict:
+    """대시보드 데이터 수집. 일부 실패는 해당 섹션만 비운다."""
+    from ..api import account as account_api
+    from ..api import stock as stock_api
+
+    parts: dict[str, Any] = {}
+
+    def safe(key, fn):
+        try:
+            parts[key] = fn()
+        except Exception:
+            parts[key] = None
+
+    safe("info", lambda: stock_api.get_stocks(client, [symbol]))
+    safe("price", lambda: market_data.get_prices(client, [symbol]))
+    safe("limits", lambda: market_data.get_price_limits(client, symbol))
+    safe("candles", lambda: market_data.get_candles(client, symbol, "1d", 30, None, None))
+    safe("orderbook", lambda: market_data.get_orderbook(client, symbol))
+    safe("warnings", lambda: stock_api.get_stock_warnings(client, symbol))
+    if config.account_seq is not None:
+        safe("holdings", lambda: account_api.get_holdings(client, config.account_seq, symbol))
+    return parts
+
+
+def _render_overview(symbol: str, parts: dict) -> None:
+    from .account import _currency_amounts, _percent, _signed  # 색/포맷 헬퍼 재사용
+
+    # ── 헤더: 종목 정보 + 현재가 + 상하한 ──
+    infos = parts.get("info") or []
+    info = infos[0] if isinstance(infos, list) and infos else {}
+    price_rows = parts.get("price") or []
+    price = price_rows[0] if isinstance(price_rows, list) and price_rows else {}
+    limits = parts.get("limits") or {}
+    name = info.get("name") or symbol
+    render.console.print(
+        f"\n[bold]{name}[/bold] [dim]({symbol}) · {info.get('market', '-')}"
+        f" · {info.get('securityType', '-')} · {price.get('currency', '')}[/dim]"
+    )
+    header = [("현재가", render.fmt_decimal(price.get("lastPrice")))]
+    if limits.get("upperLimitPrice") or limits.get("lowerLimitPrice"):
+        header.append(("상한 / 하한",
+                       f"{render.fmt_decimal(limits.get('upperLimitPrice'))}"
+                       f" / {render.fmt_decimal(limits.get('lowerLimitPrice'))}"))
+    header.append(("시각", render.short_dt(price.get("timestamp"))))
+    render.key_values("시세", header)
+
+    # ── 보유 현황 (있으면) ──
+    holding = None
+    for item in (parts.get("holdings") or {}).get("items", []) if isinstance(parts.get("holdings"), dict) else []:
+        if item.get("symbol") in (symbol, symbol.upper()):
+            holding = item
+            break
+    if holding:
+        hpl = holding.get("profitLoss", {})
+        hdaily = holding.get("dailyProfitLoss", {})
+        render.key_values(
+            "보유",
+            [
+                ("수량", holding.get("quantity")),
+                ("평단", render.fmt_decimal(holding.get("averagePurchasePrice"))),
+                ("평가손익", f"{_signed(hpl.get('amount'))}  {_percent(hpl.get('rate'))}"),
+                ("일간", _percent(hdaily.get("rate"))),
+                ("평가금액", _currency_amounts(holding.get("marketValue", {}).get("amount"))),
+            ],
+        )
+
+    # ── 미니 차트 (30일 · MA5/20, 거래량 생략) ──
+    if parts.get("candles"):
+        _render_chart(
+            symbol, "1d", parts["candles"],
+            ma_periods=(5, 20), show_volume=False,
+            avg_price=holding.get("averagePurchasePrice") if holding else None,
+        )
+
+    # ── 호가 상위 5단 ──
+    ob = parts.get("orderbook")
+    if isinstance(ob, dict) and (ob.get("asks") or ob.get("bids")):
+        trimmed = {**ob, "asks": (ob.get("asks") or [])[:5], "bids": (ob.get("bids") or [])[:5]}
+        _render_orderbook(symbol, trimmed)
+
+    # ── 매수 유의사항 ──
+    warns = parts.get("warnings")
+    if isinstance(warns, list) and warns:
+        rows = [(w.get("warningType"), w.get("exchange"), w.get("startDate"), w.get("endDate"))
+                for w in warns]
+        render.table("매수 유의사항", ["유형", "거래소", "시작일", "종료일"], rows)
+
+
 @app.command("limits")
 def limits(
     ctx: typer.Context,
