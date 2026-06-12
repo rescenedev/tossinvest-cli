@@ -81,6 +81,7 @@ toss> exit
 |---|---|
 | `005930` | 현재가 조회 |
 | `w 005930` | **종목 대시보드** — 시세·보유·차트·호가·유의사항 한 화면 |
+| `wl` / `wl add 005930 AAPL` | **관심종목 시세판** — 전일 대비 등락순 정렬 (`wl -w 10` 실시간) |
 | `c 005930` | 캔들 차트 (MA·거래량·평단선) |
 | `005930 000660` | 여러 종목 현재가 |
 | `005930 100` | 100주 **시장가 매수** |
@@ -152,6 +153,8 @@ toss market orderbook 005930         # 호가
 toss market trades 005930 -n 20      # 최근 체결
 toss market candles 005930 -i 1d -n 30   # 캔들 (1m | 1d)
 toss market overview 005930          # 종목 대시보드 (REPL: w 005930)
+toss watchlist add 005930 AAPL       # 관심종목 등록 (로컬 저장, REPL: wl add)
+toss watchlist show -w 10            # 관심종목 시세판 실시간 갱신 (REPL: wl -w 10)
 toss market chart 005930 -P 3m       # 터미널 캔들 차트 (REPL: c 005930)
 #   --ma 5,20,60   이동평균 · --bb 20  볼린저밴드 · --rsi 14  RSI 패널
 #   --period/-P 1w|1m|3m|6m|1y · --watch N  실시간 갱신 · 보유 종목이면 평단선 표시

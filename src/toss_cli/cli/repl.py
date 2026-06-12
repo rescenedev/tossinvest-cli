@@ -197,6 +197,13 @@ def expand_aliases(tokens: list[str]) -> list[str]:
     if first in ("w", "워치") and len(tokens) >= 2:
         return ["market", "overview", *tokens[1:]]
 
+    # 단독 숏컷: wl → 관심종목 시세판 / wl add·rm·clear 는 그대로 통과
+    if first in ("wl", "관심"):
+        rest = tokens[1:]
+        if rest and rest[0] in ("add", "rm", "clear", "show"):
+            return ["watchlist", *rest]
+        return ["watchlist", "show", *rest]
+
     if _SYMBOL_RE.fullmatch(first):
         return _expand_symbol(tokens)
 

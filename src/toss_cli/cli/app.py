@@ -6,7 +6,7 @@ import typer
 
 from .. import __version__
 from ._common import get_state
-from . import account, auth_cmd, info, market, order, stock
+from . import account, auth_cmd, info, market, order, stock, watchlist
 from .repl import run_repl
 
 app = typer.Typer(
@@ -23,6 +23,7 @@ app.add_typer(stock.app, name="stock")
 app.add_typer(info.app, name="info")
 app.add_typer(account.app, name="account")
 app.add_typer(order.app, name="order")
+app.add_typer(watchlist.app, name="watchlist")
 
 
 def _version_callback(value: bool) -> None:
