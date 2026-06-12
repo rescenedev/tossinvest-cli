@@ -1,7 +1,20 @@
 # tossinvest-cli
 
+<p>
+  <a href="https://pypi.org/project/tossinvest-cli/"><img src="https://img.shields.io/pypi/v/tossinvest-cli" alt="PyPI"></a>
+  <a href="https://github.com/rescenedev/tossinvest-cli/actions/workflows/ci.yml"><img src="https://github.com/rescenedev/tossinvest-cli/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/pypi/pyversions/tossinvest-cli" alt="Python">
+  <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT">
+  <a href="README.en.md"><img src="https://img.shields.io/badge/docs-English-blue" alt="English"></a>
+</p>
+
 토스증권 [Open API](https://developers.tossinvest.com/docs) 를 이용해 시세 조회부터 주문까지
 처리하는 커맨드라인 도구입니다. (비공식)
+
+> **공식 Open API 만 사용합니다.** 앱 내부(비공개) API 를 역공학하지 않으므로
+> 약관·계정 안전성 면에서 보수적입니다. 그 대신 공식 API 가 제공하지 않는
+> 수급·랭킹·AI 시그널·실시간 푸시는 지원하지 않습니다 ([FAQ](#faq) 참고).
+> AI 에이전트(Claude Code 등)에서 도구로 쓰는 방법은 [AGENTS.md](AGENTS.md) 를 보세요.
 
 > ⚠️ **실거래 주의** — 이 도구는 실제 계좌에 주문을 전송합니다. `order buy`/`sell`/`modify`/`cancel`
 > 은 기본적으로 확인 프롬프트를 거치며, `--dry-run` 으로 전송 없이 요청 내용을 먼저 확인할 수 있습니다.
@@ -218,6 +231,40 @@ toss order commissions               # 매매 수수료
 - 1억원 이상 주문은 `--confirm-high-value` 필요 (확인 표의 예상 금액으로 미리 안내).
 - KR 지정가가 호가 단위에 안 맞으면 전송 전에 경고합니다 (ETF 등은 단위가 달라 차단하지 않음).
 - `.env` 에 `TOSS_NO_SELL=1` 을 넣으면 실거래 매도가 차단됩니다 (sim·dry-run 은 허용).
+
+### 로컬 거래 기록 (ledger)
+
+이 CLI 로 보낸 주문/정정/취소는 `~/.toss-cli/ledger.jsonl` 에 자동 기록됩니다
+(API 에 거래내역 엔드포인트가 없어 로컬 기록 — 다른 채널 거래는 포함 안 됨).
+
+```bash
+toss ledger show -n 50               # 최근 기록
+toss --csv ledger show > trades.csv  # CSV 내보내기
+```
+
+### 출력 형식
+
+모든 조회 명령에 전역 옵션으로 적용됩니다:
+
+```bash
+toss --json market price 005930      # 원본 JSON (jq 파이프)
+toss --csv account holdings          # CSV (엑셀/스프레드시트)
+```
+
+## FAQ
+
+**Q. 수급·실시간 인기 순위·AI 시그널·실시간 푸시는 왜 없나요?**
+공식 Open API 에 해당 엔드포인트가 없습니다. 앱 내부 API 를 역공학하면 가능하지만
+약관 위반과 계정 제재 위험이 있어 이 도구는 의도적으로 공식 표면만 사용합니다.
+
+**Q. 토스 앱의 관심종목과 연동되나요?**
+아니요. 공식 API 에 관심종목 엔드포인트가 없어 CLI 로컬(`~/.toss-cli/watchlist.json`)에
+저장합니다. 그룹(폴더) 관리는 `toss watchlist group --help` 를 보세요.
+
+**Q. 실거래가 무섭습니다.**
+`--sim` 으로 전 기능을 모의로 쓸 수 있고, 실거래는 `--dry-run`(전송 없음) →
+확인 프롬프트 → (1억+ 는 `--confirm-high-value`) 단계를 거칩니다. `.env` 에
+`TOSS_NO_BUY/SELL/MODIFY/CANCEL=1` 로 액션별 차단도 가능합니다.
 
 ## 개발
 

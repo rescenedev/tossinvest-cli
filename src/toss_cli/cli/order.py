@@ -15,6 +15,7 @@ import typer
 from ..api import order
 from ..config import flag_enabled
 from .. import render
+from . import ledger
 from ._common import get_state, open_client, output
 
 HIGH_VALUE_KRW = 100_000_000
@@ -39,12 +40,7 @@ def _place(
 ) -> None:
     """매수/매도 공통 처리: 본문 구성 → 확인 → 전송."""
     sim = get_state(ctx).sim
-    if side == "SELL" and not sim and not dry_run and flag_enabled("TOSS_NO_SELL"):
-        render.print_error(
-            "TOSS_NO_SELL 설정으로 실거래 매도가 차단되어 있습니다. "
-            "(.env 의 TOSS_NO_SELL 을 제거하면 해제)"
-        )
-        raise typer.Exit(code=2)
+    _ensure_action_allowed("buy" if side == "BUY" else "sell", sim=sim, dry_run=dry_run)
 
     if client_order_id is None:
         # 멱등키 자동 생성 — 네트워크 재시도 시 중복 주문 방지 (스펙: 10분 유효)
@@ -116,6 +112,11 @@ def _place(
     with open_client(ctx) as (client, config):
         data = order.create_order(client, config.require_account(), body)
     order_id = data.get("orderId") if isinstance(data, dict) else None
+    ledger.record(
+        "place", sim=sim, symbol=symbol, side=side, orderType=order_type,
+        quantity=quantity, orderAmount=amount, price=price,
+        orderId=order_id, clientOrderId=client_order_id,
+    )
     tag = "[SIM] " if sim else ""
     render.print_success(f"{tag}{side_kr} 주문 접수됨. orderId={order_id}")
     output(ctx, data, lambda d: None)
@@ -218,6 +219,7 @@ def modify_order(
     yes: bool = typer.Option(False, "--yes", "-y", help="확인 프롬프트 건너뛰기"),
 ) -> None:
     """주문 정정."""
+    _ensure_action_allowed("modify", sim=get_state(ctx).sim)
     try:  # 확인 프롬프트 전에 본문 규칙 검증
         order.build_modify_body(
             order_type=order_type, quantity=quantity, price=price,
@@ -235,6 +237,8 @@ def modify_order(
             order_type=order_type, quantity=quantity, price=price,
             confirm_high_value=confirm_high_value,
         )
+    ledger.record("modify", sim=get_state(ctx).sim, orderId=order_id,
+                  quantity=quantity, price=price)
     render.print_success(f"정정 접수됨. orderId={data.get('orderId') if isinstance(data, dict) else data}")
 
 
@@ -245,11 +249,13 @@ def cancel_order(
     yes: bool = typer.Option(False, "--yes", "-y", help="확인 프롬프트 건너뛰기"),
 ) -> None:
     """주문 취소."""
+    _ensure_action_allowed("cancel", sim=get_state(ctx).sim)
     if not yes and not get_state(ctx).sim and not typer.confirm(f"주문 {order_id} 을(를) 취소할까요?"):
         render.print_warning("취소하지 않았습니다.")
         raise typer.Exit(code=0)
     with open_client(ctx) as (client, config):
         data = order.cancel_order(client, config.require_account(), order_id)
+    ledger.record("cancel", sim=get_state(ctx).sim, orderId=order_id)
     render.print_success(f"취소 접수됨. orderId={data.get('orderId') if isinstance(data, dict) else data}")
 
 
@@ -259,6 +265,22 @@ def commissions(ctx: typer.Context) -> None:
     with open_client(ctx) as (client, config):
         data = order.get_commissions(client, config.require_account())
     output(ctx, data, lambda d: render.print_json(d))
+
+
+# 액션별 실거래 차단 게이트 — .env 의 TOSS_NO_<ACTION>=1 이면 거부 (sim·dry-run 은 허용)
+_ACTION_KR = {"buy": "매수", "sell": "매도", "modify": "정정", "cancel": "취소"}
+
+
+def _ensure_action_allowed(action: str, *, sim: bool, dry_run: bool = False) -> None:
+    if sim or dry_run:
+        return
+    flag = f"TOSS_NO_{action.upper()}"
+    if flag_enabled(flag):
+        render.print_error(
+            f"{flag} 설정으로 실거래 {_ACTION_KR[action]}가 차단되어 있습니다. "
+            f"(.env 의 {flag} 를 제거하면 해제)"
+        )
+        raise typer.Exit(code=2)
 
 
 def _estimated_amount(quantity: str | None, price: str | None) -> Decimal | None:

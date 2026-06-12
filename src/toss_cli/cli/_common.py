@@ -26,6 +26,7 @@ class AppState:
 
     account: int | None = None
     json_output: bool = False
+    csv_output: bool = False
     sim: bool = False
     client: ApiClient | None = None
 
@@ -89,9 +90,66 @@ def open_client(ctx: typer.Context) -> Iterator[tuple[TossClient, Config]]:
 
 
 def output(ctx: typer.Context, data: Any, render_fn) -> None:
-    """--json 이면 원본 JSON, 아니면 render_fn(data) 로 표 출력."""
+    """--json 이면 원본 JSON, --csv 면 CSV, 아니면 render_fn(data) 로 표 출력."""
     state = get_state(ctx)
-    if state.json_output:
+    if state.csv_output:
+        print_csv(data)
+    elif state.json_output:
         render.print_json(data)
     else:
         render_fn(data)
+
+
+# 응답이 dict 일 때 CSV 행 목록으로 쓸 후보 키 (우선순위 순)
+_CSV_LIST_KEYS = ("items", "candles", "orders", "asks", "result")
+
+
+def print_csv(data: Any) -> None:
+    """응답을 평탄화해 CSV 로 stdout 에 출력.
+
+    - list[dict] → 그대로 행으로
+    - dict 에 items/candles/orders 등 목록 키가 있으면 그 목록을 행으로
+    - 그 외 dict → 단일 행
+    중첩 dict 값은 'a.b' 형태로 평탄화한다.
+    """
+    import csv
+    import sys
+
+    rows = _csv_rows(data)
+    if not rows:
+        render.print_warning("CSV 로 변환할 데이터가 없습니다.")
+        return
+    flat = [_flatten_row(r) for r in rows]
+    fields: list[str] = []
+    for row in flat:
+        for key in row:
+            if key not in fields:
+                fields.append(key)
+    writer = csv.DictWriter(sys.stdout, fieldnames=fields)
+    writer.writeheader()
+    writer.writerows(flat)
+
+
+def _csv_rows(data: Any) -> list[dict]:
+    if isinstance(data, list):
+        return [r for r in data if isinstance(r, dict)]
+    if isinstance(data, dict):
+        for key in _CSV_LIST_KEYS:
+            value = data.get(key)
+            if isinstance(value, list) and value and all(isinstance(r, dict) for r in value):
+                return value
+        return [data]
+    return []
+
+
+def _flatten_row(row: dict, prefix: str = "") -> dict:
+    flat: dict[str, Any] = {}
+    for key, value in row.items():
+        name = f"{prefix}.{key}" if prefix else str(key)
+        if isinstance(value, dict):
+            flat.update(_flatten_row(value, name))
+        elif isinstance(value, list):
+            flat[name] = ";".join(str(v) for v in value)
+        else:
+            flat[name] = value
+    return flat

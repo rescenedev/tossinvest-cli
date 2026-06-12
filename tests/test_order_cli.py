@@ -82,3 +82,19 @@ def test_modify_validates_before_prompt():
     result = runner.invoke(app, ["order", "modify", "SIM-1", "-t", "LIMIT", "-q", "5", "-y"])
     assert result.exit_code == 2
     assert "price" in result.output
+
+
+def test_action_gates_block_each_real_action(monkeypatch):
+    monkeypatch.setenv("TOSS_NO_BUY", "1")
+    r = runner.invoke(app, ["order", "buy", "005930", "-q", "1", "-t", "MARKET", "-y"])
+    assert r.exit_code == 2 and "매수" in r.output
+    monkeypatch.delenv("TOSS_NO_BUY")
+
+    monkeypatch.setenv("TOSS_NO_MODIFY", "1")
+    r = runner.invoke(app, ["order", "modify", "X-1", "-t", "LIMIT", "-p", "100", "-y"])
+    assert r.exit_code == 2 and "정정" in r.output
+    monkeypatch.delenv("TOSS_NO_MODIFY")
+
+    monkeypatch.setenv("TOSS_NO_CANCEL", "1")
+    r = runner.invoke(app, ["order", "cancel", "X-1", "-y"])
+    assert r.exit_code == 2 and "취소" in r.output

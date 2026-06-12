@@ -1,8 +1,8 @@
-"""관심종목(watchlist) 커맨드: add, rm, show, clear.
+"""관심종목(watchlist) 커맨드: add, rm, show, groups, group, clear.
 
-심볼 목록은 ~/.toss-cli/watchlist.json 에 저장된다.
-show 는 등록 종목 전체의 현재가와 전일 대비 등락률을 등락률 순으로 보여주는
-시세판이며, --watch 로 실시간 갱신할 수 있다 (전일 종가는 시작 시 1회만 조회).
+그룹(폴더) 단위로 심볼을 관리하며 ~/.toss-cli/watchlist.json 에 저장된다.
+show 는 그룹별 시세판(전일 대비 등락순)이고 --watch 로 실시간 갱신한다
+(전일 종가는 시작 시 1회만 조회, 갱신 루프는 배치 현재가 1콜).
 """
 
 from __future__ import annotations
@@ -19,23 +19,37 @@ from .. import render
 from ._common import open_client, output
 
 WATCHLIST_FILE = CONFIG_DIR / "watchlist.json"
+DEFAULT_GROUP = "기본"
 
-app = typer.Typer(help="관심종목 시세판 (등록 종목 일괄 시세 · 등락률 정렬)")
+app = typer.Typer(help="관심종목 시세판 (그룹별 관리 · 전일 대비 등락순)")
+group_app = typer.Typer(help="관심종목 그룹(폴더) 관리")
+app.add_typer(group_app, name="group")
 
 
-def _load() -> list[str]:
+# -- storage ---------------------------------------------------------------
+def _load_groups() -> dict[str, list[str]]:
     if not WATCHLIST_FILE.exists():
-        return []
+        return {}
     try:
         data = json.loads(WATCHLIST_FILE.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
-        return []
-    return [s for s in data if isinstance(s, str)] if isinstance(data, list) else []
+        return {}
+    if isinstance(data, list):  # 구버전(플랫 목록) 마이그레이션
+        return {DEFAULT_GROUP: [s for s in data if isinstance(s, str)]}
+    if isinstance(data, dict) and isinstance(data.get("groups"), dict):
+        return {
+            str(name): [s for s in syms if isinstance(s, str)]
+            for name, syms in data["groups"].items()
+            if isinstance(syms, list)
+        }
+    return {}
 
 
-def _save(symbols: list[str]) -> None:
+def _save_groups(groups: dict[str, list[str]]) -> None:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    WATCHLIST_FILE.write_text(json.dumps(symbols, ensure_ascii=False), encoding="utf-8")
+    WATCHLIST_FILE.write_text(
+        json.dumps({"groups": groups}, ensure_ascii=False), encoding="utf-8"
+    )
 
 
 def _normalize(symbol: str) -> str:
@@ -43,61 +57,153 @@ def _normalize(symbol: str) -> str:
     return symbol if symbol[:1].isdigit() else symbol.upper()
 
 
+# -- 종목 관리 ----------------------------------------------------------------
 @app.command("add")
-def add(symbols: list[str] = typer.Argument(..., help="추가할 종목 심볼")) -> None:
+def add(
+    symbols: list[str] = typer.Argument(..., help="추가할 종목 심볼"),
+    group: str = typer.Option(DEFAULT_GROUP, "--group", "-g", help="대상 그룹 (없으면 생성)"),
+) -> None:
     """관심종목 추가."""
-    current = _load()
+    groups = dict(_load_groups())
+    current = list(groups.get(group, []))
     added = [s for s in (_normalize(x) for x in symbols) if s not in current]
-    _save(current + added)
-    render.print_success(f"추가됨: {', '.join(added) or '(이미 전부 등록됨)'} · 총 {len(current) + len(added)}종목")
+    groups[group] = current + added
+    _save_groups(groups)
+    render.print_success(
+        f"[{group}] 추가됨: {', '.join(added) or '(이미 전부 등록됨)'} · {len(groups[group])}종목"
+    )
 
 
 @app.command("rm")
-def rm(symbols: list[str] = typer.Argument(..., help="제거할 종목 심볼")) -> None:
+def rm(
+    symbols: list[str] = typer.Argument(..., help="제거할 종목 심볼"),
+    group: str = typer.Option(None, "--group", "-g", help="대상 그룹 (미지정 시 전 그룹)"),
+) -> None:
     """관심종목 제거."""
     targets = {_normalize(x) for x in symbols}
-    remaining = [s for s in _load() if s not in targets]
-    _save(remaining)
-    render.print_success(f"제거 완료 · 남은 종목 {len(remaining)}개")
+    groups = {
+        name: [s for s in syms if s not in targets] if (group is None or name == group) else syms
+        for name, syms in _load_groups().items()
+    }
+    _save_groups(groups)
+    render.print_success("제거 완료 · " + " · ".join(f"{n} {len(s)}종목" for n, s in groups.items()))
 
 
 @app.command("clear")
 def clear(
+    group: str = typer.Option(None, "--group", "-g", help="특정 그룹만 비우기"),
     yes: bool = typer.Option(False, "--yes", "-y", help="확인 생략"),
 ) -> None:
-    """관심종목 전체 비우기."""
-    if not yes and not typer.confirm("관심종목을 전부 비울까요?"):
+    """관심종목 비우기 (그룹 미지정 시 전체)."""
+    scope = f"그룹 [{group}]" if group else "관심종목 전체"
+    if not yes and not typer.confirm(f"{scope}를 비울까요?"):
         render.print_warning("취소했습니다.")
         raise typer.Exit(code=0)
-    _save([])
-    render.print_success("관심종목을 비웠습니다.")
+    if group:
+        groups = {n: s for n, s in _load_groups().items() if n != group}
+        _save_groups(groups)
+    else:
+        _save_groups({})
+    render.print_success(f"{scope}를 비웠습니다.")
 
 
+# -- 그룹 관리 ----------------------------------------------------------------
+@app.command("groups")
+def list_groups() -> None:
+    """그룹 목록."""
+    groups = _load_groups()
+    if not groups:
+        render.print_warning("그룹이 없습니다. 예: toss watchlist add 005930 -g 반도체")
+        return
+    render.table(
+        "관심종목 그룹",
+        ["그룹", "종목 수", "종목"],
+        [(name, len(syms), " ".join(syms[:8]) + (" …" if len(syms) > 8 else ""))
+         for name, syms in groups.items()],
+    )
+
+
+@group_app.command("create")
+def group_create(name: str = typer.Argument(..., help="그룹 이름")) -> None:
+    """빈 그룹 생성."""
+    groups = dict(_load_groups())
+    if name in groups:
+        render.print_warning(f"이미 존재하는 그룹입니다: {name}")
+        raise typer.Exit(code=1)
+    groups[name] = []
+    _save_groups(groups)
+    render.print_success(f"그룹 생성됨: {name}")
+
+
+@group_app.command("rename")
+def group_rename(
+    old: str = typer.Argument(..., help="기존 이름"),
+    new: str = typer.Argument(..., help="새 이름"),
+) -> None:
+    """그룹 이름 변경."""
+    groups = dict(_load_groups())
+    if old not in groups:
+        render.print_error(f"그룹이 없습니다: {old}")
+        raise typer.Exit(code=1)
+    groups[new] = groups.pop(old)
+    _save_groups(groups)
+    render.print_success(f"그룹 이름 변경: {old} → {new}")
+
+
+@group_app.command("delete")
+def group_delete(
+    name: str = typer.Argument(..., help="삭제할 그룹"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="확인 생략"),
+) -> None:
+    """그룹 삭제 (종목 포함)."""
+    groups = dict(_load_groups())
+    if name not in groups:
+        render.print_error(f"그룹이 없습니다: {name}")
+        raise typer.Exit(code=1)
+    if not yes and not typer.confirm(f"그룹 [{name}] ({len(groups[name])}종목) 을 삭제할까요?"):
+        render.print_warning("취소했습니다.")
+        raise typer.Exit(code=0)
+    del groups[name]
+    _save_groups(groups)
+    render.print_success(f"그룹 삭제됨: {name}")
+
+
+# -- 시세판 -------------------------------------------------------------------
 @app.command("show")
 def show(
     ctx: typer.Context,
+    group: str = typer.Option(None, "--group", "-g", help="특정 그룹만"),
     watch: float = typer.Option(None, "--watch", "-w", help="N초 간격 갱신 (Ctrl-C 종료)"),
 ) -> None:
-    """관심종목 시세판 — 전일 대비 등락률 순 정렬."""
-    symbols = _load()
-    if not symbols:
+    """관심종목 시세판 — 그룹별, 전일 대비 등락률 순 정렬."""
+    groups = _load_groups()
+    if group is not None:
+        if group not in groups:
+            render.print_error(f"그룹이 없습니다: {group}")
+            raise typer.Exit(code=1)
+        groups = {group: groups[group]}
+    groups = {n: s for n, s in groups.items() if s}
+    if not groups:
         render.print_warning("관심종목이 없습니다. 예: toss watchlist add 005930 AAPL (REPL: wl add 005930)")
         return
+
+    all_symbols = sorted({s for syms in groups.values() for s in syms})
 
     from .market import _watch  # 공용 watch 루프
 
     with open_client(ctx) as (client, _config):
-        prev_closes = _fetch_prev_closes(client, symbols)  # 갱신 루프 밖에서 1회만
+        prev_closes = _fetch_prev_closes(client, all_symbols)  # 갱신 루프 밖에서 1회만
 
         def draw():
-            prices = market_data.get_prices(client, symbols)  # 배치 1콜
-            _render_board(symbols, prices, prev_closes)
+            prices = market_data.get_prices(client, all_symbols)  # 배치 1콜
+            for name, syms in groups.items():
+                _render_board(name, syms, prices, prev_closes)
 
         if watch:
             _watch(draw, max(1.0, watch))
             return
-        prices = market_data.get_prices(client, symbols)
-    output(ctx, prices, lambda _d: _render_board(symbols, _d, prev_closes))
+        prices = market_data.get_prices(client, all_symbols)
+    output(ctx, prices, lambda _d: [_render_board(n, s, _d, prev_closes) for n, s in groups.items()])
 
 
 def _fetch_prev_closes(client, symbols: list[str]) -> dict[str, Decimal]:
@@ -115,7 +221,9 @@ def _fetch_prev_closes(client, symbols: list[str]) -> dict[str, Decimal]:
     return closes
 
 
-def _render_board(symbols: list[str], prices: Any, prev_closes: dict[str, Decimal]) -> None:
+def _render_board(
+    title: str, symbols: list[str], prices: Any, prev_closes: dict[str, Decimal]
+) -> None:
     by_symbol = {p.get("symbol"): p for p in (prices or []) if isinstance(p, dict)}
     rows = []
     for symbol in symbols:
@@ -133,7 +241,7 @@ def _render_board(symbols: list[str], prices: Any, prev_closes: dict[str, Decima
             color = "red" if change > 0 else "blue" if change < 0 else "white"
             change_text = f"[{color}]{change:+.2f}%[/{color}]"
         table_rows.append((symbol, render.fmt_decimal(last_raw), change_text, currency))
-    render.table("관심종목 (전일 대비 등락순)", ["종목", "현재가", "등락", "통화"], table_rows)
+    render.table(f"관심종목 · {title} (전일 대비 등락순)", ["종목", "현재가", "등락", "통화"], table_rows)
 
 
 def _change_pct(last_raw: Any, prev: Decimal | None) -> Decimal | None:

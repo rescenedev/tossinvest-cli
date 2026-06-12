@@ -6,7 +6,7 @@ import typer
 
 from .. import __version__
 from ._common import get_state
-from . import account, auth_cmd, info, market, order, stock, watchlist
+from . import account, auth_cmd, info, ledger, market, order, stock, watchlist
 from .repl import run_repl
 
 app = typer.Typer(
@@ -24,6 +24,7 @@ app.add_typer(info.app, name="info")
 app.add_typer(account.app, name="account")
 app.add_typer(order.app, name="order")
 app.add_typer(watchlist.app, name="watchlist")
+app.add_typer(ledger.app, name="ledger")
 
 
 def _version_callback(value: bool) -> None:
@@ -40,6 +41,9 @@ def main_callback(
     ),
     json_output: bool = typer.Option(
         False, "--json", help="결과를 표 대신 원본 JSON 으로 출력."
+    ),
+    csv_output: bool = typer.Option(
+        False, "--csv", help="결과를 CSV 로 출력 (파이프/엑셀용)."
     ),
     sim: bool = typer.Option(
         False, "--sim", help="시뮬레이션 모드 (자격증명 없이 모의 시세/주문)."
@@ -58,6 +62,7 @@ def main_callback(
 
     state.account = account_seq
     state.json_output = json_output
+    state.csv_output = csv_output
     state.sim = sim or _env_truthy("TOSS_SIM")
 
     if ctx.invoked_subcommand is None:
