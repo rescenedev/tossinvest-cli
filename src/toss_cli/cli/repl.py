@@ -38,7 +38,8 @@ CMD_ALIASES = {
                "ch": "chart", "c": "chart", "ov": "overview", "l": "limits"},
     "stock": {"i": "info", "w": "warnings"},
     "info": {"x": "fx", "cal": "calendar"},
-    "account": {"l": "list", "h": "holdings", "bp": "buying-power", "se": "sellable"},
+    "account": {"l": "list", "h": "holdings", "bp": "buying-power", "se": "sellable",
+                "hist": "history"},
     "order": {"b": "buy", "sl": "sell", "l": "list", "g": "get",
               "mod": "modify", "c": "cancel", "cm": "commissions"},
 }

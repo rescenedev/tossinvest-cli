@@ -212,7 +212,13 @@ toss account list                    # 계좌 목록 (accountSeq 확인)
 toss account holdings                # 보유 주식 (평가손익·일간 손익 포함)
 toss account buying-power            # 매수 가능 금액 (KRW·USD 모두, -c 로 단일 통화)
 toss account sellable 005930         # 매도 가능 수량
+toss account history -P 3m           # 보유액 추이 차트 (REPL: a hist)
 ```
+
+`history` 는 현재 보유 수량 × 과거 종가로 재구성한 **근사** 곡선입니다 (기간 중
+매매·입출금 미반영, 환율은 현재값 고정). 또한 `holdings` 전체 조회 시 평가액이
+`~/.toss-cli/portfolio_history.jsonl` 에 하루 1회 기록되어, 시간이 쌓이면 실제
+추이 데이터가 됩니다.
 
 ### 주문 (order)
 

@@ -9,7 +9,7 @@ import typer
 
 from ..api import account, order
 from .. import render
-from ._common import open_client, output
+from ._common import get_state, open_client, output
 
 app = typer.Typer(help="계좌/자산 (목록/보유/매수가능금액/매도가능수량)")
 
@@ -30,7 +30,39 @@ def holdings(
     """보유 주식 조회."""
     with open_client(ctx) as (client, config):
         data = account.get_holdings(client, config.require_account(), symbol)
+    if symbol is None and not get_state(ctx).sim:
+        _record_snapshot(data)  # 실계좌 전체 조회 시 하루 1회 평가액 기록
     output(ctx, data, _render_holdings)
+
+
+def _snapshot_path():
+    from ..config import CONFIG_DIR  # 테스트에서 CONFIG_DIR 패치 가능하도록 지연 참조
+
+    return CONFIG_DIR / "portfolio_history.jsonl"
+
+
+def _record_snapshot(data: Any) -> None:
+    """평가액 일일 스냅샷을 로컬에 기록 (같은 날짜는 한 번만). 실패는 무시."""
+    import json
+    from datetime import date
+
+    if not isinstance(data, dict):
+        return
+    try:
+        path = _snapshot_path()
+        today = date.today().isoformat()
+        if path.exists() and f'"date": "{today}"' in path.read_text(encoding="utf-8"):
+            return
+        entry = {
+            "date": today,
+            "marketValue": (data.get("marketValue") or {}).get("amount"),
+            "profitLoss": (data.get("profitLoss") or {}).get("amount"),
+        }
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
 
 
 @app.command("buying-power")
@@ -66,6 +98,115 @@ def sellable(
     with open_client(ctx) as (client, config):
         data = order.get_sellable_quantity(client, config.require_account(), symbol)
     output(ctx, data, lambda d: render.key_values(f"매도 가능 수량 {symbol}", list(d.items())))
+
+
+@app.command("history")
+def history(
+    ctx: typer.Context,
+    period: str = typer.Option("3m", "--period", "-P", help="1w|1m|3m|6m|1y"),
+) -> None:
+    """보유액 추이 (근사) — 현재 보유 수량 × 과거 종가로 재구성한 평가액 곡선.
+
+    기간 중 매매·입출금은 반영되지 않으며, 환율은 현재값으로 고정 환산합니다.
+    """
+    from ..api import market_data, market_info
+    from .market import _period_to_count
+
+    count = _period_to_count(period)
+    with open_client(ctx) as (client, config):
+        holdings = account.get_holdings(client, config.require_account(), None)
+        items = [i for i in (holdings or {}).get("items", []) if Decimal(i.get("quantity", "0")) > 0]
+        if not items:
+            render.print_warning("보유 종목이 없습니다.")
+            return
+        try:
+            fx = market_info.get_exchange_rate(client, "USD", "KRW", None)
+            usdkrw = Decimal(str(fx.get("rate", "1350")))
+        except Exception:
+            usdkrw = Decimal("1350")
+        candles_by_symbol = {}
+        for item in items:
+            try:
+                data = market_data.get_candles(client, item["symbol"], "1d", count, None, None)
+                candles_by_symbol[item["symbol"]] = (data or {}).get("candles", [])
+            except Exception:
+                candles_by_symbol[item["symbol"]] = []
+    dates, values = build_value_series(items, candles_by_symbol, usdkrw=usdkrw)
+    output(ctx, {"dates": dates, "valuesKrw": [str(v) for v in values]},
+           lambda _d: _render_history(dates, values, usdkrw, period))
+
+
+def build_value_series(
+    items: list, candles_by_symbol: dict, *, usdkrw: Decimal
+) -> tuple[list[str], list[Decimal]]:
+    """일자별 포트폴리오 평가액(KRW 환산) 시계열.
+
+    종목별 종가를 날짜로 정렬해 합산한다. 휴장일은 직전 종가로 forward-fill,
+    이력이 짧은 종목은 첫 종가로 backfill 해 곡선을 끊지 않는다.
+    """
+    closes: dict[str, dict[str, Decimal]] = {}
+    all_dates: set[str] = set()
+    for item in items:
+        symbol = item["symbol"]
+        by_date = {}
+        for c in candles_by_symbol.get(symbol, []):
+            date = str(c.get("timestamp", ""))[:10]
+            try:
+                by_date[date] = Decimal(str(c["closePrice"]))
+            except Exception:
+                continue
+        if by_date:
+            closes[symbol] = by_date
+            all_dates.update(by_date)
+
+    dates = sorted(all_dates)
+    values: list[Decimal] = []
+    last: dict[str, Decimal] = {}
+    first_close = {s: d[min(d)] for s, d in closes.items()}
+    for date in dates:
+        total = Decimal(0)
+        for item in items:
+            symbol = item["symbol"]
+            if symbol not in closes:
+                continue
+            price = closes[symbol].get(date) or last.get(symbol) or first_close[symbol]
+            last[symbol] = price
+            value = Decimal(item["quantity"]) * price
+            if item.get("currency") == "USD":
+                value *= usdkrw
+            total += value
+        values.append(total)
+    return dates, values
+
+
+def _render_history(dates: list[str], values: list, usdkrw: Decimal, period: str) -> None:
+    import plotext as plt
+
+    if not dates:
+        render.print_warning("계산할 시세 이력이 없습니다.")
+        return
+    plt.clear_figure()
+    plt.theme("clear")
+    plt.date_form("m/d")
+    plt.plotsize(min(render.console.width or 100, 110), 18)
+    xs = [d[5:].replace("-", "/") for d in dates]
+    plt.plot(xs, [float(v) for v in values], color="cyan")
+    plt.title(f"보유액 추이 (근사) · {period}")
+    print(plt.build())
+
+    first, last_v = values[0], values[-1]
+    diff = last_v - first
+    pct = diff / first * 100 if first else Decimal(0)
+    color = "red" if diff > 0 else "blue" if diff < 0 else "white"
+    render.console.print(
+        f"{dates[0]} → {dates[-1]} · "
+        f"{_fmt_decimal(first)} → {_fmt_decimal(last_v)} KRW · "
+        f"[{color}]{'+' if diff > 0 else ''}{_fmt_decimal(diff)} ({pct:+.2f}%)[/{color}]"
+    )
+    render.console.print(
+        "[dim]현재 보유 수량 기준 재구성 — 기간 중 매매·입출금 미반영, "
+        f"환율은 현재값({_fmt_decimal(usdkrw)}원) 고정.[/dim]"
+    )
 
 
 # -- renderers -----------------------------------------------------------
