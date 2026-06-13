@@ -465,8 +465,20 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
         <div class="cmd-row"><code>repl</code><span>대화형 셸 시작 (인자 없이 실행해도 동일)</span></div>
         <div class="cmd-row"><code>-a, --account</code><span>계좌 지정</span></div>
         <div class="cmd-row"><code>--json</code><span>원본 JSON 출력</span></div>
+        <div class="cmd-row"><code>--csv</code><span>CSV 출력 (파이프 · 엑셀 · 에이전트)</span></div>
         <div class="cmd-row"><code>--sim</code><span>시뮬레이션 모드</span></div>
         <div class="cmd-row"><code>--dry-run</code><span>주문 전송 없이 미리보기 (buy · sell)</span></div>
+      </div>
+      <div class="cmd-group reveal">
+        <h3>REPL 메타 <span>: / ! / 종료</span></h3>
+        <div class="cmd-row"><code>:history</code><span>명령 기록 목록 — <b>!42</b> · <b>!!</b> · <b>!o b</b> 재실행, Ctrl-R 검색</span></div>
+        <div class="cmd-row"><code>:account</code><span>세션 계좌 변경 (<code>:account 1</code>)</span></div>
+        <div class="cmd-row"><code>:json</code><span>JSON 출력 토글</span></div>
+        <div class="cmd-row"><code>:tick</code><span>모의 시세 이동 — sim 전용</span></div>
+        <div class="cmd-row"><code>:reset</code><span>시뮬레이션 상태 초기화 — sim 전용</span></div>
+        <div class="cmd-row"><code>:clear</code><span>화면 지우기</span></div>
+        <div class="cmd-row"><code>? · /help</code><span>명령 · 숏컷 목록</span></div>
+        <div class="cmd-row"><code>/quit · q</code><span>종료 (exit · Ctrl-D · Ctrl-C 두 번)</span></div>
       </div>
       </div>
     </div>
