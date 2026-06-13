@@ -106,6 +106,7 @@ def run_repl(ctx: typer.Context) -> None:
     _print_banner(config, session_state.sim)
     prompt = _make_prompt(command)
 
+    history = load_history_lines()  # 과거 세션 명령 + 이번 세션 입력 누적
     interrupted = False  # 직전 입력이 Ctrl-C 였는지 (연속 두 번이면 종료)
     try:
         while True:
@@ -124,6 +125,21 @@ def run_repl(ctx: typer.Context) -> None:
             line = line.strip()
             if not line:
                 continue
+
+            # history 메뉴/재실행
+            if line in (":history", ":hist", ":h") or line.startswith((":history ", ":hist ")):
+                parts = line.split()
+                count = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 20
+                _print_history(history, count)
+                continue
+            if line.startswith("!"):
+                resolved = expand_bang(line, history)
+                if resolved is None:
+                    render.print_error(f"기록에서 찾지 못했습니다: {line} (:history 로 목록 확인)")
+                    continue
+                render.console.print(f"[dim]↻ {resolved}[/dim]")
+                line = resolved
+
             if line in EXIT_WORDS:
                 break
             if line in HELP_WORDS:
@@ -133,6 +149,7 @@ def run_repl(ctx: typer.Context) -> None:
                 if _handle_meta(line, session_state):
                     continue
 
+            history.append(line)
             try:
                 _dispatch(command, line, session_state)
             except KeyboardInterrupt:  # 실행 중 Ctrl-C: 해당 명령만 중단
@@ -243,6 +260,60 @@ def _expand_symbol(tokens: list[str]) -> list[str]:
     return ["market", "price", symbol, *rest]
 
 
+def load_history_lines() -> list[str]:
+    """prompt_toolkit FileHistory 파일에서 명령 목록을 시간순(오래된→최신)으로 로드.
+
+    형식: `# <timestamp>` 주석 뒤에 `+<명령>` 라인. 단일 라인 명령만 사용하므로
+    각 `+` 라인을 개별 명령으로 취급한다.
+    """
+    if not HISTORY_FILE.exists():
+        return []
+    lines: list[str] = []
+    try:
+        for raw in HISTORY_FILE.read_text(encoding="utf-8").splitlines():
+            if raw.startswith("+"):
+                lines.append(raw[1:])
+    except OSError:
+        return []
+    return lines
+
+
+def expand_bang(line: str, history: list[str]) -> str | None:
+    """bash 스타일 history 확장. 매칭 실패 시 None.
+
+    - `!!`        → 직전 명령
+    - `!N`        → N 번째(1-base) 명령, `!-1` 은 마지막
+    - `!<접두어>` → 해당 접두어로 시작하는 가장 최근 명령
+    """
+    if not history:
+        return None
+    token = line[1:].strip()
+    if token == "!" or token == "":
+        return history[-1]
+    if token.lstrip("-").isdigit():
+        n = int(token)
+        idx = n - 1 if n > 0 else n  # 1-base 양수 / 음수는 뒤에서
+        if -len(history) <= idx < len(history):
+            return history[idx]
+        return None
+    for cmd in reversed(history):
+        if cmd.startswith(token):
+            return cmd
+    return None
+
+
+def _print_history(history: list[str], count: int) -> None:
+    if not history:
+        render.print_warning("명령 기록이 없습니다.")
+        return
+    start = max(0, len(history) - count)
+    rows = [(str(i + 1), cmd) for i, cmd in enumerate(history[start:], start=start)]
+    render.table(f"명령 기록 (최근 {len(rows)}개 · !번호 로 재실행)", ["#", "명령"], rows)
+    render.console.print(
+        "[dim]!42 (번호) · !! (직전) · !o b (접두어) · ↑/↓ 이동 · Ctrl-R 검색[/dim]"
+    )
+
+
 def _handle_meta(line: str, session_state: AppState) -> bool:
     """`:` 로 시작하는 메타 명령 처리. 처리했으면 True."""
     parts = line.split()
@@ -317,6 +388,7 @@ def _print_help(command) -> None:
         "메타 명령",
         [
             ("개별 도움말", "<명령> --help  (예: order buy --help)"),
+            (":history [n]", "명령 기록 목록 · !번호/!! /!접두어 로 재실행 · Ctrl-R 검색"),
             (":account <seq>", "세션 계좌 변경"),
             (":json", "JSON 출력 토글"),
             (":tick [%]", "모의 시세 이동 (sim 전용, 기본 +1%) → 손익 변화"),

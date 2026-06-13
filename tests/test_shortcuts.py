@@ -91,3 +91,28 @@ def test_chart_shortcut():
 def test_overview_shortcut():
     assert expand_aliases(["w", "005930"]) == ["market", "overview", "005930"]
     assert expand_aliases(["w", "PLTR", "-w", "5"]) == ["market", "overview", "PLTR", "-w", "5"]
+
+
+def test_expand_bang_variants():
+    from toss_cli.cli.repl import expand_bang
+
+    hist = ["p", "w PLTR", "c PLTR", "o b 005930 -q 1"]
+    assert expand_bang("!!", hist) == "o b 005930 -q 1"
+    assert expand_bang("!1", hist) == "p"
+    assert expand_bang("!2", hist) == "w PLTR"
+    assert expand_bang("!-1", hist) == "o b 005930 -q 1"
+    assert expand_bang("!w", hist) == "w PLTR"          # 접두어
+    assert expand_bang("!o b", hist) == "o b 005930 -q 1"
+    assert expand_bang("!99", hist) is None              # 범위 밖
+    assert expand_bang("!zzz", hist) is None             # 매칭 없음
+    assert expand_bang("!!", []) is None                 # 빈 기록
+
+
+def test_load_history_lines(tmp_path, monkeypatch):
+    from toss_cli.cli import repl as repl_mod
+
+    f = tmp_path / "repl_history"
+    f.write_text("# 2026-06-13 00:00:00.000\n+p\n\n# 2026-06-13 00:00:01.000\n+w PLTR\n",
+                 encoding="utf-8")
+    monkeypatch.setattr(repl_mod, "HISTORY_FILE", f)
+    assert repl_mod.load_history_lines() == ["p", "w PLTR"]
