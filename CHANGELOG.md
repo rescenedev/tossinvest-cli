@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-06-13
+
+### Added
+- `account history` — 보유액 추이 차트 (현재 보유 수량 × 과거 종가로 근사 재구성), REPL `a hist`
+- `holdings` 전체 조회 시 평가액을 `~/.toss-cli/portfolio_history.jsonl` 에 하루 1회 기록
+- REPL 명령 기록 메뉴 `:history` + bash 스타일 재실행 `!42` · `!!` · `!o b`
+
 ## [0.3.1] - 2026-06-13
 
 ### Changed
