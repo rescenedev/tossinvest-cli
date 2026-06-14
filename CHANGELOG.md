@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-06-14
+
+### Added
+- `account holdings --sort daily|pl|value` — 일간 등락·수익률·평가금액 순 정렬 (REPL `p --sort daily`)
+
 ## [0.4.1] - 2026-06-14
 
 ### Fixed
