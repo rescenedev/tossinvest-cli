@@ -10,7 +10,7 @@ from __future__ import annotations
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from ..client import TossClient
+from ..client import ApiClient
 
 SIDES = ("BUY", "SELL")
 ORDER_TYPES = ("LIMIT", "MARKET")
@@ -158,13 +158,13 @@ def build_order_body(
     return body
 
 
-def create_order(client: TossClient, account_seq: int, body: dict[str, Any]) -> Any:
+def create_order(client: ApiClient, account_seq: int, body: dict[str, Any]) -> Any:
     """주문 생성. OrderOperationResponse({orderId}) 반환."""
     return client.post("/api/v1/orders", json_body=body, account_seq=account_seq)
 
 
 def list_orders(
-    client: TossClient,
+    client: ApiClient,
     account_seq: int,
     status: str,
     *,
@@ -193,7 +193,7 @@ MAX_LIST_PAGES = 100
 
 
 def list_all_orders(
-    client: TossClient,
+    client: ApiClient,
     account_seq: int,
     status: str,
     *,
@@ -223,13 +223,13 @@ def list_all_orders(
     return {"orders": orders, "hasNext": False}
 
 
-def get_order(client: TossClient, account_seq: int, order_id: str) -> Any:
+def get_order(client: ApiClient, account_seq: int, order_id: str) -> Any:
     """주문 단건 조회."""
     return client.get(f"/api/v1/orders/{order_id}", account_seq=account_seq)
 
 
 def modify_order(
-    client: TossClient,
+    client: ApiClient,
     account_seq: int,
     order_id: str,
     *,
@@ -248,12 +248,12 @@ def modify_order(
     )
 
 
-def cancel_order(client: TossClient, account_seq: int, order_id: str) -> Any:
+def cancel_order(client: ApiClient, account_seq: int, order_id: str) -> Any:
     """주문 취소."""
     return client.post(f"/api/v1/orders/{order_id}/cancel", account_seq=account_seq)
 
 
-def get_buying_power(client: TossClient, account_seq: int, currency: str) -> Any:
+def get_buying_power(client: ApiClient, account_seq: int, currency: str) -> Any:
     """매수 가능 금액 조회. currency: KRW | USD."""
     return client.get(
         "/api/v1/buying-power",
@@ -262,7 +262,7 @@ def get_buying_power(client: TossClient, account_seq: int, currency: str) -> Any
     )
 
 
-def get_sellable_quantity(client: TossClient, account_seq: int, symbol: str) -> Any:
+def get_sellable_quantity(client: ApiClient, account_seq: int, symbol: str) -> Any:
     """판매 가능 수량 조회."""
     return client.get(
         "/api/v1/sellable-quantity",
@@ -271,6 +271,6 @@ def get_sellable_quantity(client: TossClient, account_seq: int, symbol: str) -> 
     )
 
 
-def get_commissions(client: TossClient, account_seq: int) -> Any:
+def get_commissions(client: ApiClient, account_seq: int) -> Any:
     """매매 수수료 조회."""
     return client.get("/api/v1/commissions", account_seq=account_seq)

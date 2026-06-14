@@ -200,7 +200,12 @@ def show(
             _watch(draw, max(1.0, watch))
             return
         prices = market_data.get_prices(client, all_symbols)
-    output(ctx, prices, lambda _d: [_render_board(n, s, _d, prev_closes) for n, s in groups.items()])
+
+    def render_all(rows: Any) -> None:
+        for name, syms in groups.items():
+            _render_board(name, syms, rows, prev_closes)
+
+    output(ctx, prices, render_all)
 
 
 def _fetch_prev_closes(client, symbols: list[str]) -> dict[str, Decimal]:

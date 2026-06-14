@@ -61,7 +61,7 @@ def _handle_client_errors(exc: Exception) -> None:
 
 
 @contextmanager
-def open_client(ctx: typer.Context) -> Iterator[tuple[TossClient, Config]]:
+def open_client(ctx: typer.Context) -> Iterator[tuple[ApiClient, Config]]:
     """클라이언트를 열어 (client, config) 를 yield.
 
     REPL 세션이 공유 클라이언트를 주입한 경우(state.client) 그것을 재사용하고

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..client import TossClient
+from ..client import ApiClient
 
 
 def get_exchange_rate(
-    client: TossClient,
+    client: ApiClient,
     base_currency: str,
     quote_currency: str,
     date_time: str | None = None,
@@ -24,11 +24,11 @@ def get_exchange_rate(
     )
 
 
-def get_kr_calendar(client: TossClient, date: str | None = None) -> Any:
+def get_kr_calendar(client: ApiClient, date: str | None = None) -> Any:
     """한국 시장 거래 캘린더 (date 예: 2026-03-25)."""
     return client.get("/api/v1/market-calendar/KR", params={"date": date})
 
 
-def get_us_calendar(client: TossClient, date: str | None = None) -> Any:
+def get_us_calendar(client: ApiClient, date: str | None = None) -> Any:
     """미국 시장 거래 캘린더."""
     return client.get("/api/v1/market-calendar/US", params={"date": date})

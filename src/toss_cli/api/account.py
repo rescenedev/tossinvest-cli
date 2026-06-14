@@ -7,15 +7,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..client import TossClient
+from ..client import ApiClient
 
 
-def get_accounts(client: TossClient) -> Any:
+def get_accounts(client: ApiClient) -> Any:
     """계좌 목록 조회. (계좌 헤더 불필요)"""
     return client.get("/api/v1/accounts")
 
 
-def get_holdings(client: TossClient, account_seq: int, symbol: str | None = None) -> Any:
+def get_holdings(client: ApiClient, account_seq: int, symbol: str | None = None) -> Any:
     """보유 주식 조회. symbol 지정 시 해당 종목만."""
     return client.get(
         "/api/v1/holdings",

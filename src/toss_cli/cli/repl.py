@@ -18,7 +18,7 @@ from types import ModuleType
 
 import typer
 
-from ..client import TossClient
+from ..client import ApiClient, TossClient
 from ..config import CONFIG_DIR, ConfigError, load_config
 from ..sim import SimClient, reset_state, sim_config
 from .. import render
@@ -80,7 +80,7 @@ def run_repl(ctx: typer.Context) -> None:
     if not sim:
         try:
             config = load_config().with_account(state.account)
-            client: object = TossClient(config)
+            client: ApiClient = TossClient(config)
         except ConfigError:
             # 자격증명이 없으면 에러 대신 시뮬레이션 모드로 자동 전환.
             render.print_warning("자격증명이 없어 시뮬레이션 모드로 시작합니다. (실거래는 --sim 없이 자격증명 설정 후)")

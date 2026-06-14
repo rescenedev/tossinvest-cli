@@ -161,7 +161,7 @@ def _coerce_account(raw: object) -> int | None:
     if raw is None or raw == "":
         return None
     try:
-        return int(raw)
+        return int(str(raw))
     except (TypeError, ValueError) as exc:
         raise ConfigError(f"account_seq 값이 정수가 아닙니다: {raw!r}") from exc
 
