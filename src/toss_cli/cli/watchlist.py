@@ -14,7 +14,7 @@ from typing import Any
 import typer
 
 from ..api import market_data
-from ..config import CONFIG_DIR
+from ..config import CONFIG_DIR, atomic_write
 from .. import render
 from ._common import open_client, output
 
@@ -46,10 +46,7 @@ def _load_groups() -> dict[str, list[str]]:
 
 
 def _save_groups(groups: dict[str, list[str]]) -> None:
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    WATCHLIST_FILE.write_text(
-        json.dumps({"groups": groups}, ensure_ascii=False), encoding="utf-8"
-    )
+    atomic_write(WATCHLIST_FILE, json.dumps({"groups": groups}, ensure_ascii=False))
 
 
 def _normalize(symbol: str) -> str:

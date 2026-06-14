@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 import httpx
 
-from .config import CONFIG_DIR, TOKEN_CACHE_FILE, Config
+from .config import CONFIG_DIR, TOKEN_CACHE_FILE, Config, atomic_write
 from .errors import TossApiError
 
 TOKEN_PATH = "/oauth2/token"
@@ -72,12 +72,8 @@ def _write_cache(config: Config, token: Token) -> None:
         "token_type": token.token_type,
         "expires_at": token.expires_at,
     }
-    TOKEN_CACHE_FILE.write_text(json.dumps(existing), encoding="utf-8")
-    # 토큰 파일 권한을 소유자 전용으로 제한.
-    try:
-        TOKEN_CACHE_FILE.chmod(0o600)
-    except OSError:
-        pass
+    # 원자적 쓰기 + 교체 전 0o600 — 부분 쓰기·동시 쓰기·권한 노출 방지.
+    atomic_write(TOKEN_CACHE_FILE, json.dumps(existing), mode=0o600)
 
 
 def issue_token(config: Config, http: httpx.Client) -> Token:

@@ -6,13 +6,36 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
+
+
+def atomic_write(path: Path, content: str, *, mode: int | None = None) -> None:
+    """임시 파일에 쓴 뒤 os.replace 로 원자적 교체.
+
+    부분 쓰기(인터럽트·디스크풀)와 동시 쓰기로 인한 파일 손상을 방지한다.
+    mode 가 주어지면 교체 전에 권한을 설정해, 민감 파일이 잠깐도 느슨한
+    권한으로 노출되지 않게 한다 (토큰 캐시 0o600 등).
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(content)
+        if mode is not None:
+            os.chmod(tmp, mode)
+        os.replace(tmp, path)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp)
+        raise
 
 DEFAULT_BASE_URL = "https://openapi.tossinvest.com"
 CONFIG_DIR = Path(os.path.expanduser("~")) / ".toss-cli"

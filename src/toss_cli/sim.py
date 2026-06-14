@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Mapping
 
-from .config import CONFIG_DIR, Config
+from .config import CONFIG_DIR, Config, atomic_write
 from .errors import TossApiError
 
 SIM_STATE_FILE = CONFIG_DIR / "sim_state.json"
@@ -74,8 +74,7 @@ def load_state() -> dict[str, Any]:
 
 
 def save_state(state: dict[str, Any]) -> None:
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    SIM_STATE_FILE.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
+    atomic_write(SIM_STATE_FILE, json.dumps(state, ensure_ascii=False))
 
 
 def reset_state() -> None:
