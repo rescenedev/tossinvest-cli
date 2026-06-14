@@ -4,6 +4,15 @@
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-06-14
+
+### Fixed
+- REPL 자동완성에 `:history` 와 베어 숏컷(`w` 대시보드·`c` 차트·`wl` 관심종목) 노출
+
+### Changed
+- 내부 리팩토링: 차트 지표를 `indicators.py` 순수 함수로 분리, `_render_chart`/`_render_overview` 패널별 헬퍼 분해
+- 테스트 보강: API 래퍼(market_data·market_info·stock·account·order) 파라미터·계좌 헤더 전달 검증 (129 passed)
+
 ## [0.4.0] - 2026-06-14
 
 ### Added

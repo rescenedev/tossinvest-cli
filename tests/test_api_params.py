@@ -93,3 +93,48 @@ def test_calendar_paths_and_date(client):
     us = _ok("/api/v1/market-calendar/US")
     market_info.get_us_calendar(client)  # date 미지정 → 드롭
     assert "date" not in us.calls.last.request.url.params
+
+
+@respx.mock
+def test_stock_wrappers(client):
+    from toss_cli.api import stock
+    _mock_token()
+    route = _ok("/api/v1/stocks")
+    stock.get_stocks(client, ["005930", "AAPL"])
+    assert route.calls.last.request.url.params["symbols"] == "005930,AAPL"
+
+    w = respx.get(f"{BASE}/api/v1/stocks/005930/warnings").mock(
+        return_value=httpx.Response(200, json={"result": []}))
+    stock.get_stock_warnings(client, "005930")
+    assert w.called
+
+
+@respx.mock
+def test_account_holdings_sets_account_header(client):
+    from toss_cli.api import account
+    _mock_token()
+    route = respx.get(f"{BASE}/api/v1/holdings").mock(
+        return_value=httpx.Response(200, json={"result": {"items": []}}))
+    account.get_holdings(client, 7, symbol="005930")
+    req = route.calls.last.request
+    assert req.headers["X-Tossinvest-Account"] == "7"
+    assert req.url.params["symbol"] == "005930"
+
+    account.get_holdings(client, 7)  # symbol 미지정 → 드롭
+    assert "symbol" not in route.calls.last.request.url.params
+
+
+@respx.mock
+def test_order_read_wrappers_set_account_and_params(client):
+    from toss_cli.api import order
+    _mock_token()
+    bp = respx.get(f"{BASE}/api/v1/buying-power").mock(
+        return_value=httpx.Response(200, json={"result": {}}))
+    order.get_buying_power(client, 3, "USD")
+    assert bp.calls.last.request.headers["X-Tossinvest-Account"] == "3"
+    assert bp.calls.last.request.url.params["currency"] == "USD"
+
+    sq = respx.get(f"{BASE}/api/v1/sellable-quantity").mock(
+        return_value=httpx.Response(200, json={"result": {}}))
+    order.get_sellable_quantity(client, 3, "PLTR")
+    assert sq.calls.last.request.url.params["symbol"] == "PLTR"
