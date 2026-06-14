@@ -174,3 +174,39 @@ def test_retry_after_capped(config, monkeypatch):
     with TossClient(config) as client:
         client.get("/api/v1/prices", params={"symbols": "005930"})
     assert waits == [30.0]
+
+
+@respx.mock
+def test_network_error_mapped(config):
+    _mock_token(respx)
+    respx.get(f"{BASE}/api/v1/prices").mock(side_effect=httpx.ConnectError("refused"))
+    with TossClient(config) as client:
+        with pytest.raises(TossApiError) as exc:
+            client.get("/api/v1/prices", params={"symbols": "005930"})
+    assert exc.value.code == "network-error"
+    assert "<" not in exc.value.message  # raw 예외 traceback 노출 없음
+
+
+@respx.mock
+def test_timeout_mapped(config):
+    _mock_token(respx)
+    respx.get(f"{BASE}/api/v1/prices").mock(side_effect=httpx.ReadTimeout("slow"))
+    with TossClient(config) as client:
+        with pytest.raises(TossApiError) as exc:
+            client.get("/api/v1/prices", params={"symbols": "005930"})
+    assert exc.value.code == "timeout"
+
+
+@respx.mock
+def test_token_request_network_error_mapped(config):
+    # 토큰 발급 자체가 네트워크 실패 → 친절한 에러
+    respx.post(f"{BASE}/oauth2/token").mock(side_effect=httpx.ConnectError("down"))
+    with TossClient(config) as client:
+        with pytest.raises(TossApiError) as exc:
+            client.get("/api/v1/prices", params={"symbols": "005930"})
+    assert exc.value.code == "network-error"
+
+
+def test_error_str_omits_zero_status():
+    assert str(TossApiError(0, "network-error", "실패")) == "[network-error] 실패"
+    assert str(TossApiError(400, "bad", "잘못")) == "[400 bad] 잘못"

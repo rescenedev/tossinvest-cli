@@ -93,13 +93,18 @@ class TossClient:
             if account_seq is not None:
                 headers[ACCOUNT_HEADER] = str(account_seq)
 
-            response = self._http.request(
-                method,
-                url,
-                params=clean_params,
-                json=json_body,
-                headers=headers,
-            )
+            try:
+                response = self._http.request(
+                    method,
+                    url,
+                    params=clean_params,
+                    json=json_body,
+                    headers=headers,
+                )
+            except httpx.TimeoutException as exc:
+                raise TossApiError(0, "timeout", "요청 시간 초과 — 네트워크 상태를 확인하세요.") from exc
+            except httpx.RequestError as exc:
+                raise TossApiError(0, "network-error", f"네트워크 요청 실패: {exc}") from exc
 
             if response.status_code == 429 and attempt < MAX_RETRIES:
                 wait = _retry_after_seconds(response.headers)

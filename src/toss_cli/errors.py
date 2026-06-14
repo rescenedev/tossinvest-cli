@@ -20,7 +20,9 @@ class TossApiError(Exception):
     data: object | None = None
 
     def __str__(self) -> str:
-        base = f"[{self.status_code} {self.code}] {self.message}"
+        # status_code 0 = 네트워크/로컬 오류 → 무의미한 '0' 대신 코드만 표시.
+        head = f"{self.status_code} {self.code}" if self.status_code else self.code
+        base = f"[{head}] {self.message}"
         if self.request_id:
             base += f" (requestId={self.request_id})"
         return base

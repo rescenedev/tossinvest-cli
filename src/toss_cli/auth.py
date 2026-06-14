@@ -78,15 +78,20 @@ def _write_cache(config: Config, token: Token) -> None:
 
 def issue_token(config: Config, http: httpx.Client) -> Token:
     """토큰 엔드포인트에 client_credentials grant 로 토큰을 요청."""
-    response = http.post(
-        config.base_url + TOKEN_PATH,
-        data={
-            "grant_type": "client_credentials",
-            "client_id": config.client_id,
-            "client_secret": config.client_secret,
-        },
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-    )
+    try:
+        response = http.post(
+            config.base_url + TOKEN_PATH,
+            data={
+                "grant_type": "client_credentials",
+                "client_id": config.client_id,
+                "client_secret": config.client_secret,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+    except httpx.TimeoutException as exc:
+        raise TossApiError(0, "timeout", "토큰 요청 시간 초과 — 네트워크 상태를 확인하세요.") from exc
+    except httpx.RequestError as exc:
+        raise TossApiError(0, "network-error", f"토큰 요청 실패: {exc}") from exc
     if response.status_code >= 400:
         body: object
         try:
