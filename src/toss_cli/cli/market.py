@@ -342,16 +342,36 @@ def _render_chart(
     rsi_period: int | None = None,
     bb_period: int | None = None,
 ) -> None:
-    """plotext 캔들스틱 + 이동평균 + 거래량 + 평단선. 상승=빨강, 하락=파랑 (한국식)."""
-    from decimal import Decimal
+    """plotext 캔들스틱 + 이동평균 + 거래량 + RSI + 평단선. 상승=빨강, 하락=파랑 (한국식).
 
-    import plotext as plt
-
+    패널마다 독립 figure 를 build/print 한다 — plotext 서브플롯은 clear_figure 후에도
+    그리드 상태가 남는 버그가 있어, 패널을 분리해 순차 출력하는 방식이 안전하다.
+    """
     candles = list(reversed((data or {}).get("candles", [])))  # 과거 → 최근
     if not candles:
         render.print_warning("캔들 데이터가 없습니다.")
         return
 
+    dates, series, closes, volumes, date_form = _chart_series(candles, interval)
+    draw_volume = show_volume and any(volumes) and len(candles) > 1
+    rsi_values = _rsi_series(closes, rsi_period) if rsi_period else []
+    width = min(render.console.width or 100, 110)
+
+    # 패널 구성에 따라 높이를 터미널 한도(약 24행) 안으로 배분.
+    panels = 1 + int(draw_volume) + int(bool(rsi_values))
+    main_h, vol_h, rsi_h = {1: (22, 0, 0), 2: (15, 8, 8), 3: (12, 5, 6)}[panels]
+
+    _draw_price_panel(symbol, interval, dates, series, closes, date_form,
+                      width, main_h, ma_periods, bb_period, avg_price)
+    if draw_volume:
+        _draw_volume_panel(dates, series, volumes, date_form, width, vol_h)
+    if rsi_values:
+        _draw_rsi_panel(dates, rsi_values, rsi_period, date_form, width, rsi_h)
+    _print_chart_summary(candles, avg_price)
+
+
+def _chart_series(candles: list, interval: str):
+    """캔들 목록 → (dates, OHLC series, closes, volumes, plotext date_form)."""
     stamps = [render.short_dt(c.get("timestamp")) for c in candles]  # "YYYY-MM-DD HH:MM"
     if interval == "1m":
         dates = [s[11:16] for s in stamps]                   # "HH:MM"
@@ -365,79 +385,79 @@ def _render_chart(
         "Close": closes,
     }
     volumes = [float(c.get("volume") or 0) for c in candles]
-    draw_volume = show_volume and any(volumes) and len(candles) > 1
-    rsi_values = _rsi_series(closes, rsi_period) if rsi_period else []
-    draw_rsi = bool(rsi_values)
-    width = min(render.console.width or 100, 110)
     date_form = "H:M" if interval == "1m" else "m/d"
+    return dates, series, closes, volumes, date_form
 
-    # 패널 구성에 따라 높이를 터미널 한도(약 24행) 안으로 배분.
-    # plotext 서브플롯은 clear_figure 후에도 그리드 상태가 남는 버그가 있어
-    # 패널마다 독립 figure 를 만들어 이어서 출력한다.
-    panels = 1 + int(draw_volume) + int(draw_rsi)
-    main_h, vol_h, rsi_h = {1: (22, 0, 0), 2: (15, 8, 8), 3: (12, 5, 6)}[panels]
+
+def _draw_price_panel(symbol, interval, dates, series, closes, date_form,
+                      width, height, ma_periods, bb_period, avg_price) -> None:
+    """메인 가격 패널: 캔들 + 볼린저밴드 + 이동평균 + 보유 평단선."""
+    import plotext as plt
 
     plt.clear_figure()
     plt.theme("clear")
     plt.date_form(date_form)
-    plt.plotsize(width, main_h)
+    plt.plotsize(width, height)
     plt.candlestick(dates, series, colors=["red", "blue"])
 
-    # 볼린저밴드 (기간 미달 시 생략)
-    if bb_period and len(closes) >= bb_period:
+    if bb_period and len(closes) >= bb_period:  # 볼린저밴드 (기간 미달 시 생략)
         upper, lower = _bollinger(closes, bb_period, 2.0)
         plt.plot(dates[bb_period - 1 :], upper, label=f"BB{bb_period}", color="gray")
         plt.plot(dates[bb_period - 1 :], lower, color="gray")
 
-    # 이동평균선 오버레이 (기간이 캔들 수보다 길면 생략)
-    for period, color in zip(ma_periods, _MA_COLORS):
+    for period, color in zip(ma_periods, _MA_COLORS):  # 이동평균선 오버레이
         if period >= 2 and len(closes) >= period:
-            ma_values = [
-                sum(closes[i - period + 1 : i + 1]) / period
-                for i in range(period - 1, len(closes))
-            ]
-            plt.plot(dates[period - 1 :], ma_values, label=f"MA{period}", color=color)
+            plt.plot(dates[period - 1 :], _sma(closes, period), label=f"MA{period}", color=color)
 
-    # 보유 평단선 — 가격 범위에서 크게 벗어나면 차트가 짜부되므로 생략 (요약에는 표시)
-    if avg_price:
+    if avg_price:  # 보유 평단선 — 가격 범위 밖이면 차트가 짜부되므로 생략 (요약엔 표시)
         try:
             avg = float(avg_price)
-            lows, highs = min(series["Low"]), max(series["High"])
-            if lows * 0.85 <= avg <= highs * 1.15:
+            if min(series["Low"]) * 0.85 <= avg <= max(series["High"]) * 1.15:
                 plt.hline(avg, "magenta")
         except ValueError:
             pass
 
-    first, last = Decimal(candles[0]["closePrice"]), Decimal(candles[-1]["closePrice"])
-    change = (last - first) / first * 100 if first else Decimal(0)
-    plt.title(f"{symbol}  {interval} x{len(candles)}")
+    plt.title(f"{symbol}  {interval} x{len(dates)}")
     print(plt.build())
 
-    if draw_volume:
-        # 거래량 패널 — 양봉 빨강 / 음봉 파랑
-        up = [v if series["Close"][i] >= series["Open"][i] else 0 for i, v in enumerate(volumes)]
-        down = [v if series["Close"][i] < series["Open"][i] else 0 for i, v in enumerate(volumes)]
-        plt.clear_figure()
-        plt.theme("clear")
-        plt.date_form(date_form)
-        plt.plotsize(width, vol_h)
-        plt.bar(dates, up, color="red")
-        plt.bar(dates, down, color="blue")
-        plt.title("거래량")
-        print(plt.build())
 
-    if draw_rsi:
-        # RSI 패널 — 70(과매수)/30(과매도) 기준선
-        plt.clear_figure()
-        plt.theme("clear")
-        plt.date_form(date_form)
-        plt.plotsize(width, rsi_h)
-        plt.plot(dates[rsi_period:], rsi_values, label=f"RSI{rsi_period}", color="cyan")
-        plt.hline(70, "red")
-        plt.hline(30, "blue")
-        plt.ylim(0, 100)
-        print(plt.build())
+def _draw_volume_panel(dates, series, volumes, date_form, width, height) -> None:
+    """거래량 패널 — 양봉 빨강 / 음봉 파랑."""
+    import plotext as plt
 
+    up = [v if series["Close"][i] >= series["Open"][i] else 0 for i, v in enumerate(volumes)]
+    down = [v if series["Close"][i] < series["Open"][i] else 0 for i, v in enumerate(volumes)]
+    plt.clear_figure()
+    plt.theme("clear")
+    plt.date_form(date_form)
+    plt.plotsize(width, height)
+    plt.bar(dates, up, color="red")
+    plt.bar(dates, down, color="blue")
+    plt.title("거래량")
+    print(plt.build())
+
+
+def _draw_rsi_panel(dates, rsi_values, rsi_period, date_form, width, height) -> None:
+    """RSI 패널 — 70(과매수)/30(과매도) 기준선."""
+    import plotext as plt
+
+    plt.clear_figure()
+    plt.theme("clear")
+    plt.date_form(date_form)
+    plt.plotsize(width, height)
+    plt.plot(dates[rsi_period:], rsi_values, label=f"RSI{rsi_period}", color="cyan")
+    plt.hline(70, "red")
+    plt.hline(30, "blue")
+    plt.ylim(0, 100)
+    print(plt.build())
+
+
+def _print_chart_summary(candles: list, avg_price: str | None) -> None:
+    """차트 하단 한 줄 요약: 기간 등락 · 종가 · 고저 · (보유 시) 평단 대비."""
+    from decimal import Decimal
+
+    first, last = Decimal(candles[0]["closePrice"]), Decimal(candles[-1]["closePrice"])
+    change = (last - first) / first * 100 if first else Decimal(0)
     high = max(Decimal(c["highPrice"]) for c in candles)
     low = min(Decimal(c["lowPrice"]) for c in candles)
     color = "red" if change > 0 else "blue" if change < 0 else "white"
