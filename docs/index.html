@@ -299,6 +299,33 @@ h2 {
 .step .opt code { font-family: var(--mono); font-size: 12px; background: rgba(255,255,255,.09); border-radius: 5px; padding: 1px 6px; color: var(--ink-2); }
 @media (max-width: 540px) { .step { grid-template-columns: 1fr; gap: 12px; } .step .num { display: none; } }
 
+/* ───────── 보안 강조 ───────── */
+.secure {
+  background: linear-gradient(135deg, rgba(49,130,246,.14), rgba(49,130,246,.03));
+  border: 1px solid rgba(49,130,246,.28);
+  border-radius: 28px; padding: 48px 52px;
+  display: grid; grid-template-columns: 1fr 1.05fr; gap: 44px; align-items: center;
+}
+@media (max-width: 820px) { .secure { grid-template-columns: 1fr; gap: 28px; padding: 36px 26px; } }
+.secure-badge {
+  display: inline-block; font-family: var(--mono); font-size: 13px; font-weight: 600;
+  color: #5ea2ff; background: rgba(49,130,246,.16); border-radius: 980px; padding: 6px 16px; margin-bottom: 18px;
+}
+.secure-left h2 { font-size: clamp(28px, 4vw, 42px); font-weight: 700; letter-spacing: -.025em; line-height: 1.12; margin-bottom: 16px; }
+.secure-left p { font-size: 15px; color: var(--ink-2); letter-spacing: -.01em; line-height: 1.6; }
+.secure-left .secure-sub { margin-top: 14px; font-size: 13px; color: var(--ink-3); }
+.secure-left code { font-family: var(--mono); font-size: 12.5px; background: rgba(255,255,255,.09); border-radius: 5px; padding: 1px 6px; color: var(--ink-2); }
+.secure-left b { color: var(--ink); }
+.secure-code .cmd {
+  font-family: var(--mono); font-size: 13px; line-height: 1.7; color: #d7dee8;
+  background: #0d1117; border: 1px solid rgba(255,255,255,.1); border-radius: 14px;
+  padding: 20px 22px; overflow-x: auto; white-space: pre;
+}
+.secure-code .c { color: #6b7689; }
+.secure-code .p { color: #4f9cf9; font-weight: 600; }
+.secure-code .o { color: #9ba3af; }
+.secure-code .ok { color: #3fd68f; }
+
 /* ───────── 마지막 CTA ───────── */
 .final { text-align: center; }
 .final .install-line {
@@ -539,15 +566,31 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
         <h3>잘못된 주문은 떠나지 않습니다</h3>
         <p>지정가 가격 필수, 금액 주문은 미국 주식 전용 같은 규칙을 서버에 가기 전에 잡아냅니다.</p>
       </div>
-      <div class="safe reveal">
-        <span class="m">Keychain · no plaintext</span>
-        <h3>키는 한 번만, 평문 노출 없이</h3>
-        <p>한 번 <code>auth keychain set</code> 하면 <code>client_id</code> · <code>client_secret</code> 이 <b style="color:var(--ink)">macOS Keychain 에 암호화 보관</b>됩니다. <code>.env</code> 평문 파일 없이 어느 디렉터리에서든 동작합니다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 보안 강조 ═══════════ -->
+<section id="security">
+  <div class="sec-inner">
+    <div class="secure reveal">
+      <div class="secure-left">
+        <span class="secure-badge">🔐 Keychain · no plaintext</span>
+        <h2>키는 한 번만,<br>평문 노출 없이.</h2>
+        <p>한 번 <code>auth keychain set</code> 하면 <code>client_id</code> · <code>client_secret</code> 이
+        <b>macOS Keychain 에 암호화 보관</b>됩니다. <code>.env</code> 평문 파일 없이 어느 디렉터리에서든 동작하고,
+        <code>auth status</code> 출력에서도 키 원문은 마스킹됩니다 — 화면·로그에 드러나지 않습니다.</p>
+        <p class="secure-sub">토큰은 소유자 전용 권한(600)으로 캐시 · 우선순위 <code>env</code> › <code>.env</code> › <b>Keychain</b> › <code>toml</code></p>
       </div>
-      <div class="safe reveal">
-        <span class="m">token 600 · masked</span>
-        <h3>캐시도 출력도 가립니다</h3>
-        <p>토큰은 소유자 전용 권한(600)으로 캐시되고, <code>auth status</code> 는 시크릿을 마스킹해 보여줍니다. 화면·로그에 키 원문이 드러나지 않습니다.</p>
+      <div class="secure-code">
+        <div class="cmd"><span class="c"># 한 번 저장하면 .env 평문 없이 어디서든</span>
+<span class="p">$</span> toss auth keychain set
+<span class="o">client_id:</span> ••••••••••••
+<span class="o">client_secret:</span> ••••••••••••
+<span class="ok">✓ Keychain 에 자격증명을 저장했습니다.</span>
+
+<span class="p">$</span> cd ~/anywhere && toss market price 005930
+<span class="c"># → Keychain 에서 불러와 정상 동작 ✓</span></div>
       </div>
     </div>
   </div>

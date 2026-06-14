@@ -5,11 +5,14 @@
   <a href="https://github.com/rescenedev/tossinvest-cli/actions/workflows/ci.yml"><img src="https://github.com/rescenedev/tossinvest-cli/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/pypi/pyversions/tossinvest-cli" alt="Python">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT">
+  <a href="https://rescenedev.github.io/tossinvest-cli/"><img src="https://img.shields.io/badge/website-rescenedev.github.io-3182F6" alt="Website"></a>
   <a href="README.en.md"><img src="https://img.shields.io/badge/docs-English-blue" alt="English"></a>
 </p>
 
 토스증권 [Open API](https://developers.tossinvest.com/docs) 를 이용해 시세 조회부터 주문까지
 처리하는 커맨드라인 도구입니다. (비공식)
+
+> 🌐 **웹사이트:** <https://rescenedev.github.io/tossinvest-cli/> — 기능·명령어·릴리스 노트 한눈에.
 
 ## 왜 이 도구인가 — 공식 API 만 씁니다
 
