@@ -7,6 +7,7 @@ from typing import Any, Iterable, Sequence
 
 from rich.console import Console
 from rich.json import JSON
+from rich.markup import escape
 from rich.table import Table
 
 console = Console()
@@ -18,15 +19,17 @@ def print_json(data: Any) -> None:
 
 
 def print_error(message: str) -> None:
-    err_console.print(f"[bold red]오류:[/bold red] {message}")
+    # message 는 사용자/API 데이터 → 대괄호([400 x] 등)가 rich 마크업으로
+    # 오인되지 않도록 escape. 라벨만 마크업으로 둔다.
+    err_console.print("[bold red]오류:[/bold red]", escape(message))
 
 
 def print_success(message: str) -> None:
-    console.print(f"[bold green]✓[/bold green] {message}")
+    console.print("[bold green]✓[/bold green]", escape(message))
 
 
 def print_warning(message: str) -> None:
-    console.print(f"[bold yellow]![/bold yellow] {message}")
+    console.print("[bold yellow]![/bold yellow]", escape(message))
 
 
 def table(title: str, columns: Sequence[str], rows: Iterable[Sequence[Any]]) -> None:
