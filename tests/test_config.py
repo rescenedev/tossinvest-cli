@@ -12,6 +12,8 @@ def isolate_env(monkeypatch, tmp_path):
     for key in ("TOSS_CLIENT_ID", "TOSS_CLIENT_SECRET", "TOSS_ACCOUNT_SEQ", "TOSS_BASE_URL"):
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setattr(config_mod, "CONFIG_FILE", tmp_path / "config.toml")
+    # 실제 macOS Keychain 영향 제거 (개발 머신에 키가 저장돼 있을 수 있음)
+    monkeypatch.setattr(config_mod, "keychain_get", lambda account: None)
     yield
 
 

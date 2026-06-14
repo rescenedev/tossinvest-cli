@@ -272,6 +272,33 @@ h2 {
 .rel code { font-family: var(--mono); font-size: 12px; background: rgba(255,255,255,.09); border-radius: 5px; padding: 1px 6px; color: var(--ink); }
 .rel-more { text-align: center; margin-top: 36px; font-size: 15px; }
 
+/* ───────── 시작하기 ───────── */
+.steps { max-width: 720px; margin: 56px auto 0; display: grid; gap: 16px; }
+.step {
+  display: grid; grid-template-columns: 46px 1fr; gap: 20px; align-items: start;
+  background: var(--card); border: 1px solid rgba(255,255,255,.06);
+  border-radius: 20px; padding: 26px 28px;
+}
+.step .num {
+  width: 46px; height: 46px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--mono); font-size: 18px; font-weight: 600; color: var(--blue);
+  background: rgba(49,130,246,.14);
+}
+.step h3 { font-size: 18px; font-weight: 700; letter-spacing: -.018em; margin-bottom: 4px; }
+.step p { font-size: 14px; color: var(--ink-2); letter-spacing: -.01em; margin-bottom: 14px; }
+.step p:last-child { margin-bottom: 0; }
+.step .cmd {
+  font-family: var(--mono); font-size: 13.5px; color: #d7dee8;
+  background: #0d1117; border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px; padding: 13px 16px; overflow-x: auto; white-space: pre;
+}
+.step .cmd .c { color: #6b7689; }       /* 주석 */
+.step .cmd .p { color: #4f9cf9; }       /* 프롬프트 $ */
+.step .opt { margin-top: 12px; font-size: 13px; color: var(--ink-3); }
+.step .opt code { font-family: var(--mono); font-size: 12px; background: rgba(255,255,255,.09); border-radius: 5px; padding: 1px 6px; color: var(--ink-2); }
+@media (max-width: 540px) { .step { grid-template-columns: 1fr; gap: 12px; } .step .num { display: none; } }
+
 /* ───────── 마지막 CTA ───────── */
 .final { text-align: center; }
 .final .install-line {
@@ -310,6 +337,7 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
   <div class="nav-inner">
     <a class="nav-brand" href="#">tossinvest-cli</a>
     <div class="nav-links">
+      <a href="#start">시작하기</a>
       <a href="#features">기능</a>
       <a href="#shortcuts">숏컷</a>
       <a href="#commands">명령어</a>
@@ -511,6 +539,16 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
         <h3>잘못된 주문은 떠나지 않습니다</h3>
         <p>지정가 가격 필수, 금액 주문은 미국 주식 전용 같은 규칙을 서버에 가기 전에 잡아냅니다.</p>
       </div>
+      <div class="safe reveal">
+        <span class="m">Keychain · no plaintext</span>
+        <h3>키는 한 번만, 평문 노출 없이</h3>
+        <p>한 번 <code>auth keychain set</code> 하면 <code>client_id</code> · <code>client_secret</code> 이 <b style="color:var(--ink)">macOS Keychain 에 암호화 보관</b>됩니다. <code>.env</code> 평문 파일 없이 어느 디렉터리에서든 동작합니다.</p>
+      </div>
+      <div class="safe reveal">
+        <span class="m">token 600 · masked</span>
+        <h3>캐시도 출력도 가립니다</h3>
+        <p>토큰은 소유자 전용 권한(600)으로 캐시되고, <code>auth status</code> 는 시크릿을 마스킹해 보여줍니다. 화면·로그에 키 원문이 드러나지 않습니다.</p>
+      </div>
     </div>
   </div>
 </section>
@@ -590,6 +628,44 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
       </div>
     </div>
     <p class="rel-more reveal"><a class="link-more" href="https://github.com/rescenedev/tossinvest-cli/releases">GitHub 에서 전체 릴리스 보기</a></p>
+  </div>
+</section>
+
+<!-- ═══════════ 시작하기 ═══════════ -->
+<section id="start">
+  <div class="sec-inner">
+    <div class="sec-head reveal"><h2>60초 만에 시작.</h2></div>
+    <p class="sec-sub reveal">키 없이 먼저 체험하고, 준비되면 자격증명만 연결하면 됩니다.</p>
+    <div class="steps">
+      <div class="step reveal">
+        <div class="num">1</div>
+        <div>
+          <h3>설치</h3>
+          <p>Python ≥ 3.11. 설치하면 <code style="font-family:var(--mono);font-size:.85em">toss</code> 명령이 등록됩니다.</p>
+          <div class="cmd"><span class="p">$</span> uv tool install tossinvest-cli</div>
+        </div>
+      </div>
+      <div class="step reveal">
+        <div class="num">2</div>
+        <div>
+          <h3>키 없이 체험</h3>
+          <p>시뮬레이션 모드 — 자격증명·실계좌 없이 모든 명령을 모의로.</p>
+          <div class="cmd"><span class="p">$</span> toss --sim</div>
+        </div>
+      </div>
+      <div class="step reveal">
+        <div class="num">3</div>
+        <div>
+          <h3>실거래 연결</h3>
+          <p><a href="https://developers.tossinvest.com">개발자 콘솔</a>에서 <code style="font-family:var(--mono);font-size:.85em">client_id</code> · <code style="font-family:var(--mono);font-size:.85em">client_secret</code> 을 발급받아 연결합니다.</p>
+          <div class="cmd"><span class="c"># macOS Keychain 에 저장 (권장 — .env 평문 없이 어디서나 동작)</span>
+<span class="p">$</span> toss auth keychain set
+<span class="c"># 또는 .env 파일로</span>
+<span class="p">$</span> cp .env.example .env   <span class="c"># TOSS_CLIENT_ID / SECRET 입력</span></div>
+          <p class="opt">우선순위: 환경변수 › <code>.env</code> › <b style="color:var(--ink-2)">Keychain</b> › <code>~/.toss-cli/config.toml</code> · 확인은 <code>toss auth status</code></p>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 

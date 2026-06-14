@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### Added
+- macOS Keychain 자격증명 백엔드 — `toss auth keychain set/status/clear`, 우선순위 env > .env > Keychain > toml (`.env` 평문 없이 어디서나 동작)
+
 ## [0.3.2] - 2026-06-13
 
 ### Added

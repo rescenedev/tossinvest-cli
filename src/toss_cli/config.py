@@ -7,6 +7,9 @@
 from __future__ import annotations
 
 import os
+import shutil
+import subprocess
+import sys
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,6 +18,64 @@ DEFAULT_BASE_URL = "https://openapi.tossinvest.com"
 CONFIG_DIR = Path(os.path.expanduser("~")) / ".toss-cli"
 CONFIG_FILE = CONFIG_DIR / "config.toml"
 TOKEN_CACHE_FILE = CONFIG_DIR / "token.json"
+
+# macOS Keychain (security CLI) 항목 식별자
+KEYCHAIN_SERVICE = "tossinvest-cli"
+KEYCHAIN_KEYS = {"TOSS_CLIENT_ID": "client_id", "TOSS_CLIENT_SECRET": "client_secret"}
+
+
+def keychain_available() -> bool:
+    """macOS 이고 security CLI 가 있으면 Keychain 사용 가능."""
+    return sys.platform == "darwin" and shutil.which("security") is not None
+
+
+def keychain_get(account: str) -> str | None:
+    """Keychain 에서 generic password 조회 (없거나 비-macOS 면 None)."""
+    if not keychain_available():
+        return None
+    try:
+        result = subprocess.run(
+            ["security", "find-generic-password",
+             "-s", KEYCHAIN_SERVICE, "-a", account, "-w"],
+            capture_output=True, text=True, timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    value = result.stdout.strip()
+    return value or None
+
+
+def keychain_set(account: str, secret: str) -> None:
+    """Keychain 에 generic password 저장 (있으면 갱신). 실패 시 ConfigError."""
+    if not keychain_available():
+        raise ConfigError("Keychain 은 macOS 에서만 사용할 수 있습니다.")
+    try:
+        result = subprocess.run(
+            ["security", "add-generic-password",
+             "-s", KEYCHAIN_SERVICE, "-a", account, "-w", secret, "-U"],
+            capture_output=True, text=True, timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ConfigError(f"Keychain 저장 실패: {exc}") from exc
+    if result.returncode != 0:
+        raise ConfigError(f"Keychain 저장 실패: {result.stderr.strip()}")
+
+
+def keychain_delete(account: str) -> bool:
+    """Keychain 항목 삭제. 삭제했으면 True."""
+    if not keychain_available():
+        return False
+    try:
+        result = subprocess.run(
+            ["security", "delete-generic-password",
+             "-s", KEYCHAIN_SERVICE, "-a", account],
+            capture_output=True, text=True, timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return result.returncode == 0
 
 
 class ConfigError(Exception):
@@ -89,7 +150,7 @@ def flag_enabled(name: str, dotenv_path: Path | None = None) -> bool:
 
 
 def load_config(dotenv_path: Path | None = None) -> Config:
-    """우선순위: 환경변수 > .env(cwd) > ~/.toss-cli/config.toml.
+    """우선순위: 환경변수 > .env(cwd) > macOS Keychain > ~/.toss-cli/config.toml.
 
     누락된 필수 자격증명이 있으면 ConfigError 를 발생시킵니다.
     """
@@ -101,6 +162,8 @@ def load_config(dotenv_path: Path | None = None) -> Config:
             return os.environ[env_key]
         if dotenv.get(env_key):
             return dotenv[env_key]
+        if env_key in KEYCHAIN_KEYS and (kc := keychain_get(KEYCHAIN_KEYS[env_key])):
+            return kc
         value = file_cfg.get(file_key)
         return str(value) if value is not None else None
 

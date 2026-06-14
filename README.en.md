@@ -39,6 +39,18 @@ Requires Python ≥ 3.11. Registers the `toss` command.
 Get `client_id` / `client_secret` from the [Open API console](https://developers.tossinvest.com),
 then copy `.env.example` to `.env` and fill it in. Run `toss auth status` to verify.
 
+**macOS Keychain (recommended).** Store credentials encrypted in the Keychain instead
+of a plaintext `.env` — once set, it works from any directory with no `.env` present:
+
+```bash
+toss auth keychain set       # prompts for client_id / client_secret (hidden)
+toss auth keychain status    # check presence (never prints values)
+```
+
+Resolution order: env vars › `.env` › macOS Keychain › `~/.toss-cli/config.toml`.
+Tokens are cached with owner-only (600) permissions and `auth status` masks secrets —
+no plaintext key ever reaches your screen or logs.
+
 ## Quick start
 
 ```bash

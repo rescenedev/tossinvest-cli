@@ -69,8 +69,20 @@ TOSS_CLIENT_SECRET=your-client-secret
 TOSS_ACCOUNT_SEQ=1          # 선택: 기본 계좌
 ```
 
-설정 우선순위: **환경변수 > `.env`(현재 디렉터리) > `~/.toss-cli/config.toml`**.
+### macOS Keychain 에 안전 보관 (권장)
+
+`.env` 평문 대신 자격증명을 **macOS Keychain 에 암호화 보관**할 수 있습니다.
+한 번 저장하면 `.env` 없이 어느 디렉터리에서든 동작합니다.
+
+```bash
+toss auth keychain set       # client_id / client_secret 입력 (secret 은 가림)
+toss auth keychain status    # 저장 여부 확인 (값은 노출 안 함)
+toss auth keychain clear     # 삭제
+```
+
+설정 우선순위: **환경변수 > `.env`(현재 디렉터리) > macOS Keychain > `~/.toss-cli/config.toml`**.
 토큰은 `~/.toss-cli/token.json` 에 캐시되어 만료 전까지 재사용됩니다(권한 600).
+키 원문은 `auth status` 출력에서 마스킹되어 화면·로그에 드러나지 않습니다.
 
 설정/토큰 상태 확인:
 
