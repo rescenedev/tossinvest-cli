@@ -561,7 +561,17 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
     <p class="sec-sub reveal">태그 한 번이면 PyPI 까지 자동으로 갑니다.</p>
     <div class="timeline reveal">
       <div class="rel">
-        <div class="v"><span class="tag-v">v0.3.2</span><span class="date">2026-06-13 · 최신</span></div>
+        <div class="v"><span class="tag-v">v0.4.0</span><span class="date">2026-06-14 · 최신</span></div>
+        <div>
+          <h3>macOS Keychain 자격증명 보관</h3>
+          <ul>
+            <li><code>auth keychain set</code> — client_id·secret 을 Keychain 에 암호화 보관, <code>.env</code> 평문 없이 동작</li>
+            <li>우선순위 env › .env › Keychain › toml, 키 원문은 출력에서 마스킹</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rel">
+        <div class="v"><span class="tag-v">v0.3.2</span><span class="date">2026-06-13</span></div>
         <div>
           <h3>보유액 추이 · 명령 기록</h3>
           <ul>
