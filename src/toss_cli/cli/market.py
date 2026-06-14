@@ -193,13 +193,27 @@ def _gather_overview(client, config, symbol: str) -> dict:
 
 
 def _render_overview(symbol: str, parts: dict) -> None:
-    from .account import _currency_amounts, _percent, _signed  # 색/포맷 헬퍼 재사용
+    """종목 원샷 대시보드 — 헤더·보유·미니차트·호가·유의사항을 순차 렌더."""
+    _overview_header(symbol, parts)
+    holding = _overview_holding(symbol, parts)
+    if parts.get("candles"):  # 미니 차트 (30일 · MA5/20, 거래량 생략)
+        _render_chart(
+            symbol, "1d", parts["candles"],
+            ma_periods=(5, 20), show_volume=False,
+            avg_price=holding.get("averagePurchasePrice") if holding else None,
+        )
+    _overview_orderbook(symbol, parts)
+    _overview_warnings(parts)
 
-    # ── 헤더: 종목 정보 + 현재가 + 상하한 ──
-    infos = parts.get("info") or []
-    info = infos[0] if isinstance(infos, list) and infos else {}
-    price_rows = parts.get("price") or []
-    price = price_rows[0] if isinstance(price_rows, list) and price_rows else {}
+
+def _first(rows: Any) -> dict:
+    """list 응답의 첫 dict (없으면 빈 dict)."""
+    return rows[0] if isinstance(rows, list) and rows and isinstance(rows[0], dict) else {}
+
+
+def _overview_header(symbol: str, parts: dict) -> None:
+    info = _first(parts.get("info"))
+    price = _first(parts.get("price"))
     limits = parts.get("limits") or {}
     name = info.get("name") or symbol
     render.console.print(
@@ -214,41 +228,39 @@ def _render_overview(symbol: str, parts: dict) -> None:
     header.append(("시각", render.short_dt(price.get("timestamp"))))
     render.key_values("시세", header)
 
-    # ── 보유 현황 (있으면) ──
-    holding = None
-    for item in (parts.get("holdings") or {}).get("items", []) if isinstance(parts.get("holdings"), dict) else []:
-        if item.get("symbol") in (symbol, symbol.upper()):
-            holding = item
-            break
-    if holding:
-        hpl = holding.get("profitLoss", {})
-        hdaily = holding.get("dailyProfitLoss", {})
-        render.key_values(
-            "보유",
-            [
-                ("수량", holding.get("quantity")),
-                ("평단", render.fmt_decimal(holding.get("averagePurchasePrice"))),
-                ("평가손익", f"{_signed(hpl.get('amount'))}  {_percent(hpl.get('rate'))}"),
-                ("일간", _percent(hdaily.get("rate"))),
-                ("평가금액", _currency_amounts(holding.get("marketValue", {}).get("amount"))),
-            ],
-        )
 
-    # ── 미니 차트 (30일 · MA5/20, 거래량 생략) ──
-    if parts.get("candles"):
-        _render_chart(
-            symbol, "1d", parts["candles"],
-            ma_periods=(5, 20), show_volume=False,
-            avg_price=holding.get("averagePurchasePrice") if holding else None,
-        )
+def _overview_holding(symbol: str, parts: dict) -> dict | None:
+    """보유 종목이면 보유 요약을 렌더하고 그 항목을 반환 (없으면 None)."""
+    from .account import _currency_amounts, _percent, _signed  # 색/포맷 헬퍼 재사용
 
-    # ── 호가 상위 5단 ──
+    holdings = parts.get("holdings")
+    items = holdings.get("items", []) if isinstance(holdings, dict) else []
+    holding = next((i for i in items if i.get("symbol") in (symbol, symbol.upper())), None)
+    if not holding:
+        return None
+    hpl = holding.get("profitLoss", {})
+    hdaily = holding.get("dailyProfitLoss", {})
+    render.key_values(
+        "보유",
+        [
+            ("수량", holding.get("quantity")),
+            ("평단", render.fmt_decimal(holding.get("averagePurchasePrice"))),
+            ("평가손익", f"{_signed(hpl.get('amount'))}  {_percent(hpl.get('rate'))}"),
+            ("일간", _percent(hdaily.get("rate"))),
+            ("평가금액", _currency_amounts(holding.get("marketValue", {}).get("amount"))),
+        ],
+    )
+    return holding
+
+
+def _overview_orderbook(symbol: str, parts: dict) -> None:
     ob = parts.get("orderbook")
     if isinstance(ob, dict) and (ob.get("asks") or ob.get("bids")):
         trimmed = {**ob, "asks": (ob.get("asks") or [])[:5], "bids": (ob.get("bids") or [])[:5]}
         _render_orderbook(symbol, trimmed)
 
-    # ── 매수 유의사항 ──
+
+def _overview_warnings(parts: dict) -> None:
     warns = parts.get("warnings")
     if isinstance(warns, list) and warns:
         rows = [(w.get("warningType"), w.get("exchange"), w.get("startDate"), w.get("endDate"))
