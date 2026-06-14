@@ -26,13 +26,46 @@ def list_accounts(ctx: typer.Context) -> None:
 def holdings(
     ctx: typer.Context,
     symbol: str = typer.Option(None, "--symbol", "-s", help="특정 종목만 조회"),
+    sort: str = typer.Option(
+        None, "--sort", help="정렬: daily(일간 등락) | pl(수익률) | value(평가금액)"
+    ),
 ) -> None:
-    """보유 주식 조회."""
+    """보유 주식 조회. --sort 로 일간 등락·수익률·평가금액 순 정렬."""
     with open_client(ctx) as (client, config):
         data = account.get_holdings(client, config.require_account(), symbol)
     if symbol is None and not get_state(ctx).sim:
         _record_snapshot(data)  # 실계좌 전체 조회 시 하루 1회 평가액 기록
+    if sort:
+        data = _sort_holdings(data, sort)
     output(ctx, data, _render_holdings)
+
+
+_SORT_KEYS = {
+    "daily": lambda i: ("dailyProfitLoss", "rate"),
+    "pl": lambda i: ("profitLoss", "rate"),
+    "value": lambda i: ("marketValue", "amount"),
+}
+
+
+def _sort_holdings(data: Any, key: str) -> Any:
+    """보유 항목을 지정 키(내림차순)로 정렬한 새 dict 반환. 잘못된 키면 원본 유지."""
+    if key not in _SORT_KEYS or not isinstance(data, dict):
+        if key not in _SORT_KEYS:
+            render.print_warning(f"알 수 없는 정렬 키: {key} (daily | pl | value)")
+        return data
+    section, field = _SORT_KEYS[key]("")
+
+    def metric(item: dict) -> Decimal:
+        raw = (item.get(section) or {}).get(field)
+        if isinstance(raw, dict):  # 통화별 dict 면 KRW 우선
+            raw = raw.get("krw") or next(iter(raw.values()), None)
+        try:
+            return Decimal(str(raw))
+        except (InvalidOperation, ValueError, TypeError):
+            return Decimal("-1e30")
+
+    items = sorted(data.get("items", []), key=metric, reverse=True)
+    return {**data, "items": items}
 
 
 def _snapshot_path():
