@@ -481,6 +481,10 @@ def _completion_tree(command) -> dict:
     for alias, full in GROUP_ALIASES.items():
         if full in tree:
             tree[alias] = tree[full]
-    for meta in ("p", "help", "exit", "quit", ":account", ":json", ":tick", ":reset", ":clear"):
-        tree.setdefault(meta, None)
+    # 베어 숏컷(p=보유, w=대시보드, c=차트)과 메타 명령도 자동완성에 노출.
+    for kw in ("p", "w", "c", "help", "exit",
+               ":history", ":account", ":json", ":tick", ":reset", ":clear"):
+        tree.setdefault(kw, None)
+    if "watchlist" in tree:  # wl 숏컷 → watchlist 하위 트리(add/rm/group …)
+        tree["wl"] = tree["watchlist"]
     return tree

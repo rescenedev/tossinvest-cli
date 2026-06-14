@@ -116,3 +116,17 @@ def test_load_history_lines(tmp_path, monkeypatch):
                  encoding="utf-8")
     monkeypatch.setattr(repl_mod, "HISTORY_FILE", f)
     assert repl_mod.load_history_lines() == ["p", "w PLTR"]
+
+
+def test_completion_tree_includes_shortcuts_and_meta():
+    import typer
+    from toss_cli.cli.app import app
+    from toss_cli.cli.repl import _completion_tree
+
+    tree = _completion_tree(typer.main.get_command(app))
+    for key in ("p", "w", "c", "wl", ":history", ":json", ":reset"):
+        assert key in tree, key
+    # wl 은 watchlist 하위 트리(add/group 등)를 그대로 노출
+    assert isinstance(tree["wl"], dict) and "add" in tree["wl"]
+    # 그룹 약어도 유지
+    assert tree["m"] == tree["market"]
