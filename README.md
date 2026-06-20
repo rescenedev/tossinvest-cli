@@ -55,6 +55,21 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
+### 셸 자동완성
+
+`toss` 의 서브커맨드·옵션을 `<TAB>` 으로 자동완성합니다. 현재 셸을 자동 감지해 설정까지 마치려면:
+
+```bash
+toss --install-completion      # 적용하려면 셸 재시작 또는: exec $SHELL
+toss --show-completion          # 스크립트 내용만 출력
+```
+
+bash/zsh/fish 정적 스크립트와 수동 설치 방법은 [`completions/`](completions/) 디렉터리를 참고하세요. 예) bash:
+
+```bash
+source completions/toss.bash    # 현재 셸에만 적용
+```
+
 ## 설정
 
 [토스증권 Open API 콘솔](https://developers.tossinvest.com)에서 클라이언트를 등록해

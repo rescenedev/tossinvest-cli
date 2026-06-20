@@ -1,0 +1,7 @@
+#compdef toss
+
+_toss_completion() {
+  eval $(env _TYPER_COMPLETE_ARGS="${words[1,$CURRENT]}" _TOSS_COMPLETE=complete_zsh toss)
+}
+
+compdef _toss_completion toss
