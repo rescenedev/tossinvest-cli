@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-06-20
+
+### Added
+- bash/zsh/fish 셸 자동완성 스크립트 (`completions/`) — `toss --install-completion` 또는 정적 스크립트 `source`. Typer 동적 완성으로 커맨드 변경에 자동 동기화
+
+### Changed
+- 내부: api 계층을 `ApiClient` 프로토콜로 통일하고 mypy 타입 체크를 CI 에 도입
+
 ## [0.4.3] - 2026-06-14
 
 ### Fixed
