@@ -5,6 +5,7 @@ from __future__ import annotations
 import typer
 
 from .. import __version__
+from ._alias import AliasGroup
 from ._common import get_state
 from . import account, auth_cmd, info, ledger, market, order, stock, watchlist
 from .repl import run_repl
@@ -15,6 +16,7 @@ app = typer.Typer(
     no_args_is_help=False,
     invoke_without_command=True,
     add_completion=True,
+    cls=AliasGroup,
 )
 
 app.add_typer(auth_cmd.app, name="auth")

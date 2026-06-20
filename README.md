@@ -70,6 +70,20 @@ bash/zsh/fish 정적 스크립트와 수동 설치 방법은 [`completions/`](co
 source completions/toss.bash    # 현재 셸에만 적용
 ```
 
+> zsh 사용 중 자동완성이 갱신되지 않으면 캐시를 비우고 새 셸을 여세요: `rm -f ~/.zcompdump*; exec zsh`
+
+### 명령 약어 (prefix)
+
+고유하게 식별되는 접두어로 명령을 줄여 쓸 수 있습니다. 정확한 이름은 항상 우선합니다.
+
+```bash
+toss o list           # = toss order list
+toss acc holdings     # = toss account holdings
+toss au k status      # = toss auth keychain status
+```
+
+접두어가 여러 명령에 걸리면(예: `a` → account/auth) 후보를 보여 주고 멈춥니다.
+
 ## 설정
 
 [토스증권 Open API 콘솔](https://developers.tossinvest.com)에서 클라이언트를 등록해

@@ -6,11 +6,10 @@ import typer
 
 from ..api import market_info
 from .. import render
+from ._alias import AliasGroup
 from ._common import open_client, output
 
-app = typer.Typer(help="시장 정보 (환율/거래 캘린더)")
-
-
+app = typer.Typer(help="시장 정보 (환율/거래 캘린더)", cls=AliasGroup)
 @app.command("fx")
 def fx(
     ctx: typer.Context,

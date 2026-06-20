@@ -6,11 +6,10 @@ import typer
 
 from ..api import stock
 from .. import render
+from ._alias import AliasGroup
 from ._common import open_client, output
 
-app = typer.Typer(help="종목 정보 (기본정보/매수 유의사항)")
-
-
+app = typer.Typer(help="종목 정보 (기본정보/매수 유의사항)", cls=AliasGroup)
 @app.command("info")
 def info(
     ctx: typer.Context,

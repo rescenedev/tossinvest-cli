@@ -17,9 +17,10 @@ from ..config import (
     load_config,
 )
 from ..errors import TossApiError
+from ._alias import AliasGroup
 
-app = typer.Typer(help="인증 (토큰 발급/캐시 관리)")
-keychain_app = typer.Typer(help="macOS Keychain 에 자격증명 저장/조회/삭제")
+app = typer.Typer(help="인증 (토큰 발급/캐시 관리)", cls=AliasGroup)
+keychain_app = typer.Typer(help="macOS Keychain 에 자격증명 저장/조회/삭제", cls=AliasGroup)
 app.add_typer(keychain_app, name="keychain")
 
 

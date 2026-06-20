@@ -16,13 +16,14 @@ import typer
 from ..api import market_data
 from ..config import CONFIG_DIR, atomic_write
 from .. import render
+from ._alias import AliasGroup
 from ._common import open_client, output
 
 WATCHLIST_FILE = CONFIG_DIR / "watchlist.json"
 DEFAULT_GROUP = "기본"
 
-app = typer.Typer(help="관심종목 시세판 (그룹별 관리 · 전일 대비 등락순)")
-group_app = typer.Typer(help="관심종목 그룹(폴더) 관리")
+app = typer.Typer(help="관심종목 시세판 (그룹별 관리 · 전일 대비 등락순)", cls=AliasGroup)
+group_app = typer.Typer(help="관심종목 그룹(폴더) 관리", cls=AliasGroup)
 app.add_typer(group_app, name="group")
 
 

@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-06-20
+
+### Added
+- 명령 약어(prefix) 해석 — `toss o list`(=order list), `toss acc h`(=account holdings), `toss au k status`(=auth keychain status)처럼 고유 접두어로 호출 가능. 접두어가 모호하면(예: `a` = account/auth) 후보를 안내. 모든 그룹/하위 그룹에 적용
+
 ## [0.4.4] - 2026-06-20
 
 ### Added

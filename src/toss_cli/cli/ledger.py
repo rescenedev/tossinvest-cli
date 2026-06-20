@@ -15,13 +15,12 @@ import typer
 
 from ..config import CONFIG_DIR
 from .. import render
+from ._alias import AliasGroup
 from ._common import output
 
 LEDGER_FILE = CONFIG_DIR / "ledger.jsonl"
 
-app = typer.Typer(help="로컬 거래 기록 (이 CLI 로 보낸 주문/정정/취소)")
-
-
+app = typer.Typer(help="로컬 거래 기록 (이 CLI 로 보낸 주문/정정/취소)", cls=AliasGroup)
 def record(action: str, *, sim: bool, **fields: Any) -> None:
     """ledger 에 한 건 기록. 기록 실패가 거래 흐름을 깨지 않도록 조용히 무시."""
     entry = {

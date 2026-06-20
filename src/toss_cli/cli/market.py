@@ -9,11 +9,10 @@ import typer
 from ..api import market_data
 from .. import render
 from . import indicators
+from ._alias import AliasGroup
 from ._common import open_client, output
 
-app = typer.Typer(help="시세 조회 (현재가/호가/체결/캔들/상하한가)")
-
-
+app = typer.Typer(help="시세 조회 (현재가/호가/체결/캔들/상하한가)", cls=AliasGroup)
 @app.command("price")
 def price(
     ctx: typer.Context,

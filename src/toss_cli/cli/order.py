@@ -16,13 +16,12 @@ from ..api import order
 from ..config import flag_enabled
 from .. import render
 from . import ledger
+from ._alias import AliasGroup
 from ._common import get_state, open_client, output
 
 HIGH_VALUE_KRW = 100_000_000
 
-app = typer.Typer(help="주문/거래 (매수/매도/조회/정정/취소/수수료)")
-
-
+app = typer.Typer(help="주문/거래 (매수/매도/조회/정정/취소/수수료)", cls=AliasGroup)
 def _place(
     ctx: typer.Context,
     *,
