@@ -1,3 +1,8 @@
 """토스증권 Open API CLI."""
 
-__version__ = "0.4.3"
+from importlib.metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version("tossinvest-cli")
+except PackageNotFoundError:  # 설치 전(소스 직접 실행) 폴백
+    __version__ = "0.0.0+dev"
