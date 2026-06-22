@@ -18,7 +18,7 @@ jobs:
           python-version: "3.13"
       - name: Build sdist + wheel
         run: pipx run build
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
@@ -30,7 +30,7 @@ jobs:
     permissions:
       id-token: write  # Trusted Publishing (토큰 불필요)
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist/
