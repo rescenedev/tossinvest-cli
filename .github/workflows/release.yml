@@ -3,10 +3,14 @@ name: Release to PyPI
 # v* 태그 푸시 시 빌드 후 PyPI 에 Trusted Publishing 으로 배포.
 # 사전 설정: PyPI 프로젝트 설정 → Publishing → GitHub
 #   (owner: rescenedev, repo: tossinvest-cli, workflow: release.yml, environment: pypi)
+#
+# workflow_dispatch 로 수동 실행하면 빌드·아티팩트 단계까지만 도는 dry-run 이다
+# (실제 PyPI 게시 스텝은 태그 푸시에서만 동작 — 아래 if 가드 참고).
 
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -35,3 +39,4 @@ jobs:
           name: dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
+        if: github.event_name == 'push'  # 태그 푸시에서만 실제 게시 (수동 dispatch 는 dry-run)
