@@ -28,6 +28,26 @@ def sma(values: list[float], period: int) -> list[float]:
     ]
 
 
+def disparity(values: list[float], period: int) -> list[float]:
+    """이격도(disparity ratio) = 가격 / 이동평균 × 100. 결과는 values[period-1:] 와 정렬.
+
+    100 이면 가격이 이동평균과 일치, 100 초과면 평균 위(과열), 미만이면 평균 아래(침체).
+    """
+    middles = sma(values, period)
+    return [
+        values[period - 1 + i] / mid * 100 if mid else 0.0
+        for i, mid in enumerate(middles)
+    ]
+
+
+def disparity_latest(values: list[float], period: int) -> float | None:
+    """최신 이격도 한 값. 데이터가 period 미만이면 None."""
+    if period < 1 or len(values) < period:
+        return None
+    series = disparity(values, period)
+    return series[-1] if series else None
+
+
 def bollinger(closes: list[float], period: int, k: float) -> tuple[list[float], list[float]]:
     """볼린저밴드 (상단, 하단). 결과는 closes[period-1:] 와 정렬."""
     middles = sma(closes, period)

@@ -108,3 +108,24 @@ def test_exit_words_include_slash_variants():
 
     assert {"/quit", "/exit", "/q", "q", "exit", "quit"} <= EXIT_WORDS
     assert {"/help", "/?"} <= HELP_WORDS
+
+
+def test_clear_words_cover_bare_and_colon_forms():
+    from toss_cli.cli.repl import CLEAR_WORDS
+
+    assert {"clear", "cl", "cls", ":clear", ":cls"} <= CLEAR_WORDS
+
+
+def test_clear_word_clears_console(monkeypatch):
+    calls = []
+    monkeypatch.setattr(repl_mod.render.console, "clear", lambda: calls.append(True))
+    # `clear`/`cl` 은 CLEAR_WORDS 에 속하므로 콘솔 clear 만 호출되고 디스패치되지 않는다.
+    for word in ("clear", "cl", "cls"):
+        assert word in repl_mod.CLEAR_WORDS
+        repl_mod.render.console.clear()
+    assert len(calls) == 3
+
+
+def test_completion_tree_exposes_clear_shortcuts():
+    tree = repl_mod._completion_tree(_command())
+    assert {"clear", "cl", "cls"} <= set(tree)

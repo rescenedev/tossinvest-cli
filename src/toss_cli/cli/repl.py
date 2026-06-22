@@ -26,6 +26,7 @@ from ._common import AppState, get_state
 
 EXIT_WORDS = {"exit", "quit", "q", ":exit", ":quit", ":q", "/exit", "/quit", "/q", "/bye"}
 HELP_WORDS = {"help", ":help", "?", ":?", "/help", "/?"}
+CLEAR_WORDS = {"clear", "cl", "cls", ":clear", ":cls", "/clear", "/cls"}
 HISTORY_FILE = CONFIG_DIR / "repl_history"
 
 # 그룹/명령 숏컷. 예) `m p 005930` → `market price 005930`
@@ -144,6 +145,9 @@ def run_repl(ctx: typer.Context) -> None:
                 break
             if line in HELP_WORDS:
                 _print_help(command)
+                continue
+            if line in CLEAR_WORDS:
+                render.console.clear()
                 continue
             if line.startswith(":"):
                 if _handle_meta(line, session_state):
@@ -360,9 +364,6 @@ def _handle_meta(line: str, session_state: AppState) -> bool:
         total = client.shift_price(pct)
         render.print_success(f"모의 시세를 {pct:+g}% 이동했습니다. (누적 {total:+g}%)  `p` 로 손익 확인")
         return True
-    if cmd in (":clear", ":cls"):
-        render.console.clear()
-        return True
     render.print_warning(f"알 수 없는 메타 명령: {cmd} (:help 참고)")
     return True
 
@@ -393,7 +394,7 @@ def _print_help(command) -> None:
             (":json", "JSON 출력 토글"),
             (":tick [%]", "모의 시세 이동 (sim 전용, 기본 +1%) → 손익 변화"),
             (":reset", "시뮬레이션 상태 초기화 (sim 전용)"),
-            (":clear", "화면 지우기"),
+            ("clear · cl · cls", "화면 지우기 (:clear 도 동일)"),
             ("exit · /quit · q", "종료 (Ctrl-D, Ctrl-C 두 번도 동일)"),
         ],
     )
@@ -482,7 +483,7 @@ def _completion_tree(command) -> dict:
         if full in tree:
             tree[alias] = tree[full]
     # 베어 숏컷(p=보유, w=대시보드, c=차트)과 메타 명령도 자동완성에 노출.
-    for kw in ("p", "w", "c", "help", "exit",
+    for kw in ("p", "w", "c", "help", "exit", "clear", "cl", "cls",
                ":history", ":account", ":json", ":tick", ":reset", ":clear"):
         tree.setdefault(kw, None)
     if "watchlist" in tree:  # wl 숏컷 → watchlist 하위 트리(add/rm/group …)

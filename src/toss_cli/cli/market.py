@@ -106,7 +106,7 @@ def chart(
     period: str = typer.Option(None, "--period", "-P", help="기간 프리셋: 1d(오늘·분봉)|1w|1m|3m|6m|1y (일봉)"),
     watch: float = typer.Option(None, "--watch", "-w", help="N초 간격 갱신 (Ctrl-C 종료)"),
 ) -> None:
-    """캔들 차트를 터미널에 그려서 추세 확인 (이동평균·거래량·RSI·볼린저·평단선)."""
+    """캔들 차트를 터미널에 그려서 추세 확인 (이동평균·거래량·RSI·볼린저·평단선·이격도)."""
     ma_periods = tuple(int(p) for p in ma.split(",") if p.strip().isdigit())
     if period:
         if period.lower() == "1d":  # 오늘 차트 = 1분봉 (count 상한 200 = 약 3시간 20분)
@@ -378,7 +378,7 @@ def _render_chart(
         _draw_volume_panel(dates, series, volumes, date_form, width, vol_h)
     if rsi_values:
         _draw_rsi_panel(dates, rsi_values, rsi_period, date_form, width, rsi_h)
-    _print_chart_summary(candles, avg_price)
+    _print_chart_summary(candles, avg_price, ma_periods)
 
 
 def _chart_series(candles: list, interval: str):
@@ -463,7 +463,9 @@ def _draw_rsi_panel(dates, rsi_values, rsi_period, date_form, width, height) -> 
     print(plt.build())
 
 
-def _print_chart_summary(candles: list, avg_price: str | None) -> None:
+def _print_chart_summary(
+    candles: list, avg_price: str | None, ma_periods: tuple[int, ...] = ()
+) -> None:
     """차트 하단 한 줄 요약: 기간 등락 · 종가 · 고저 · (보유 시) 평단 대비."""
     from decimal import Decimal
 
@@ -485,6 +487,29 @@ def _print_chart_summary(candles: list, avg_price: str | None) -> None:
             f" ([{dcolor}]{diff:+.2f}%[/{dcolor}])"
         )
     render.console.print(summary)
+
+    disparity_line = _disparity_summary(candles, ma_periods)
+    if disparity_line:
+        render.console.print(disparity_line)
+
+
+def _disparity_summary(candles: list, ma_periods: tuple[int, ...]) -> str | None:
+    """표시된 이동평균 기간별 이격도(종가/MA×100) 한 줄. 데이터 부족 시 생략.
+
+    100 기준 — 빨강(>100, 평균 위) / 파랑(<100, 평균 아래). 100±5 이탈은 굵게(과열·침체).
+    """
+    closes = [float(c["closePrice"]) for c in candles]
+    parts: list[str] = []
+    for period in ma_periods:
+        ratio = indicators.disparity_latest(closes, period)
+        if ratio is None:
+            continue
+        color = "red" if ratio > 100 else "blue" if ratio < 100 else "white"
+        bold = "bold " if abs(ratio - 100) >= 5 else ""
+        parts.append(f"MA{period} [{bold}{color}]{ratio:.1f}%[/{bold}{color}]")
+    if not parts:
+        return None
+    return "[dim]이격도[/dim] " + " · ".join(parts)
 
 
 def _render_limits(symbol: str, data: dict) -> None:

@@ -113,6 +113,7 @@ def test_chart_with_ma_volume_and_avg(capsys):
     assert "MA5" in out and "MA20" in out
     assert "거래량" in out
     assert "평단" in out
+    assert "이격도" in out   # 표시된 이동평균 기준 이격도 한 줄
 
 
 def test_chart_single_candle_no_volume_subplot(capsys):
@@ -121,6 +122,21 @@ def test_chart_single_candle_no_volume_subplot(capsys):
     _render_chart("SPCX", "1d", {"candles": _sample_candles(1)})
     out = capsys.readouterr().out
     assert "기간 등락" in out
+
+
+def test_disparity_summary_marks_overheated():
+    from toss_cli.cli.market import _disparity_summary
+
+    # 종가가 이동평균보다 한참 위(우상향) → MA5 이격도 > 105 (과열, bold red).
+    line = _disparity_summary(_sample_candles(30), (5, 20))
+    assert line is not None and "이격도" in line and "MA5" in line and "MA20" in line
+
+
+def test_disparity_summary_omitted_when_insufficient():
+    from toss_cli.cli.market import _disparity_summary
+
+    # 캔들 3개로는 MA20 이격도를 못 구하므로 해당 항목 생략, 둘 다 없으면 None.
+    assert _disparity_summary(_sample_candles(3), (20,)) is None
 
 
 def test_chart_with_rsi_and_bb(capsys):
