@@ -472,7 +472,7 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
       <div class="cell cell-2 reveal">
         <div class="glyph">▂▄▆█</div>
         <h3>차트 · 대시보드</h3>
-        <p><code>c 005930</code> 캔들 차트(이동평균·RSI·볼린저·이격도), <code>w 005930</code> 종목 대시보드, <code>wl</code> 관심종목 시세판.</p>
+        <p><code>c 005930</code> 캔들 차트(이동평균·RSI·볼린저·이격도), <code>w 005930</code> 종목 대시보드, <code>f 005930</code> 펀더멘털(PER·PBR·EPS, 네이버), <code>wl</code> 관심종목 시세판.</p>
       </div>
       <div class="cell cell-2 reveal">
         <div class="glyph">{ }</div>
@@ -496,6 +496,7 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
       <div class="cheat-row"><div class="k">w 005930</div><div class="v"><b>종목 대시보드</b> — 시세 · 보유 · 차트 · 호가 한 화면</div></div>
       <div class="cheat-row"><div class="k">wl</div><div class="v"><b>관심종목 시세판</b> — 전일 대비 등락순 (wl add 로 등록)</div></div>
       <div class="cheat-row"><div class="k">c 005930 -P 3m</div><div class="v">캔들 차트 — MA · RSI · 볼린저 · 평단선 · <b>이격도</b></div></div>
+      <div class="cheat-row"><div class="k">f 005930</div><div class="v"><b>펀더멘털</b> — PER · PBR · EPS · 배당 (네이버, 국내·해외)</div></div>
       <div class="cheat-row"><div class="k">p</div><div class="v"><b>보유 종목</b> — 수량 · 평단 · 평가손익 · 수익률</div></div>
       <div class="cheat-row"><div class="k">m ob 005930</div><div class="v">호가창 (market orderbook)</div></div>
       <div class="cheat-row"><div class="k">a bp</div><div class="v">매수 가능 금액 (account buying-power)</div></div>
@@ -545,6 +546,7 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
         <h3>stock <span>종목 정보</span></h3>
         <div class="cmd-row"><code>info</code><span>기본 정보 — 시장 · ISIN · 상장일</span></div>
         <div class="cmd-row"><code>warnings</code><span>매수 유의사항</span></div>
+        <div class="cmd-row"><code>fundamentals</code><span>PER · PBR · EPS 등 (네이버 · REPL: <b>f</b>)</span></div>
       </div>
       <div class="cmd-group reveal">
         <h3>info <span>시장 정보</span></h3>
@@ -648,7 +650,17 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
     <p class="sec-sub reveal">태그 한 번이면 PyPI 까지 자동으로 갑니다.</p>
     <div class="timeline reveal">
       <div class="rel">
-        <div class="v"><span class="tag-v">v0.4.7</span><span class="date">2026-06-22 · 최신</span></div>
+        <div class="v"><span class="tag-v">v0.4.8</span><span class="date">2026-06-22 · 최신</span></div>
+        <div>
+          <h3>펀더멘털 (PER·PBR·EPS)</h3>
+          <ul>
+            <li><code>stock fundamentals</code>(REPL <code>f</code>) — PER·추정PER·PBR·EPS·BPS·배당·시총·52주 고저, 국내·해외 모두</li>
+            <li>출처 <b>네이버 금융</b> 외부 참고 데이터 — 거래·인증과 분리된 읽기 전용, <code>w</code> 대시보드에도 한 줄</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rel">
+        <div class="v"><span class="tag-v">v0.4.7</span><span class="date">2026-06-22</span></div>
         <div>
           <h3>이격도 · 화면 정리</h3>
           <ul>

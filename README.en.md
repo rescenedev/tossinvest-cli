@@ -24,7 +24,10 @@ Layered trade safety on top: `--dry-run` preview → confirmation prompt →
 auto idempotency keys → local trade ledger. Practice risk-free with `--sim`.
 
 Features absent from the official API (investor flows, rankings, AI signals, realtime
-push) are intentionally out of scope. For AI-agent conventions, see [AGENTS.md](AGENTS.md).
+push) are intentionally out of scope. The one exception — public valuation metrics
+(PER/PBR/EPS) — is fetched from **Naver Finance** as clearly-labeled, read-only external
+reference data via `stock fundamentals`, fully separated from the trading/auth path. For
+AI-agent conventions, see [AGENTS.md](AGENTS.md).
 
 ## Install
 
@@ -64,6 +67,7 @@ Inside the REPL:
 toss> 005930                 # bare symbol → quote (KR codes & US tickers)
 toss> w AAPL                 # one-shot symbol dashboard (quote·position·chart·orderbook)
 toss> c 005930 -P 3m         # candlestick chart with MA/volume + disparity ratio (--rsi 14, --bb 20)
+toss> f 005930               # fundamentals: PER/PBR/EPS etc. (Naver, external reference)
 toss> wl add 005930 AAPL     # local watchlist; `wl` shows a board sorted by daily change
 toss> 005930 100             # buy 100 shares at market (confirmation prompt)
 toss> p                      # holdings with P/L and daily change
