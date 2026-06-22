@@ -3,7 +3,7 @@
 from toss_cli import render
 from toss_cli.cli.info import _render_calendar
 from toss_cli.cli.market import _render_candles, _render_limits, _render_trades
-from toss_cli.cli.stock import _render_infos, _render_warnings
+from toss_cli.cli.stock import _render_fundamentals, _render_infos, _render_warnings
 
 
 def _capture(fn, *args) -> str:
@@ -55,6 +55,39 @@ def test_stock_warnings_table():
         {"warningType": "VI_STATIC", "exchange": "KRX", "startDate": "2026-06-01", "endDate": None},
     ])
     assert "VI_STATIC" in out and "KRX" in out
+
+
+def test_fundamentals_renders_metrics_and_source():
+    from toss_cli.api.naver import Fundamentals
+
+    f = Fundamentals("005930", "삼성전자", "KR",
+                     (("PER", "28.57배"), ("PBR", "4.92배"), ("EPS", "12,372원")))
+    out = _capture(_render_fundamentals, ["005930"], [f])
+    assert "삼성전자" in out and "PER" in out and "28.57배" in out
+    assert "네이버 금융" in out and "외부" in out
+
+
+def test_fundamentals_warns_when_missing():
+    out = _capture(_render_fundamentals, ["AAPL"], [None])
+    assert "AAPL" in out and "찾지 못했" in out
+
+
+def test_overview_fundamentals_line():
+    from toss_cli.cli.market import _overview_fundamentals
+
+    parts = {"fundamentals": {
+        "PER": "28.6배", "PBR": "4.92배", "EPS": "12,372원", "배당수익률": "0.47%",
+        "BPS": "71,907원",  # compact 에 미포함 → 한 줄엔 안 나옴
+    }}
+    out = _capture(_overview_fundamentals, parts)
+    assert "펀더멘털(네이버)" in out and "PER" in out and "28.6배" in out
+    assert "BPS" not in out
+
+
+def test_overview_fundamentals_skips_when_absent():
+    out = _capture(__import__("toss_cli.cli.market", fromlist=["_overview_fundamentals"])
+                   ._overview_fundamentals, {"fundamentals": None})
+    assert out.strip() == ""
 
 
 def test_calendar_flattened():

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import typer
 
-from ..api import stock
+from ..api import naver, stock
 from .. import render
 from ._alias import AliasGroup
 from ._common import open_client, output
@@ -32,7 +32,40 @@ def warnings(
     output(ctx, data, lambda d: _render_warnings(symbol, d))
 
 
+@app.command("fundamentals")
+def fundamentals(
+    ctx: typer.Context,
+    symbols: list[str] = typer.Argument(..., help="종목 심볼 (예: 005930 AAPL)"),
+) -> None:
+    """PER·PBR·EPS 등 밸류에이션 지표 (네이버 금융 — 외부 참고 데이터, 읽기 전용)."""
+    results = [naver.fetch(s) for s in symbols]
+    data = [r.as_dict() for r in results if r]  # --json/--csv 용
+    output(ctx, data, lambda _d: _render_fundamentals(symbols, results))
+
+
 # -- renderers -----------------------------------------------------------
+def _render_fundamentals(symbols, results) -> None:
+    found = False
+    for symbol, fund in zip(symbols, results):
+        if not fund:
+            render.print_warning(
+                f"{symbol}: 네이버 금융에서 펀더멘털을 찾지 못했습니다. "
+                "(미상장·해외 미지원·네트워크 오류일 수 있음)"
+            )
+            continue
+        found = True
+        render.key_values(
+            f"펀더멘털 {fund.symbol} {fund.name}  · 출처 {fund.source}",
+            list(fund.metrics),
+        )
+    if found:
+        render.console.print(
+            "[dim]※ 토스 Open API 가 아닌 외부(네이버 금융) 참고 데이터입니다. "
+            "투자 판단의 근거로 삼기 전 공식 공시를 확인하세요.[/dim]"
+        )
+
+
+
 def _render_infos(data) -> None:
     items = data if isinstance(data, list) else [data]
     rows = [

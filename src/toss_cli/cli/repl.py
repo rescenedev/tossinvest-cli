@@ -37,7 +37,7 @@ GROUP_ALIASES = {
 CMD_ALIASES = {
     "market": {"p": "price", "ob": "orderbook", "t": "trades", "cd": "candles",
                "ch": "chart", "c": "chart", "ov": "overview", "l": "limits"},
-    "stock": {"i": "info", "w": "warnings"},
+    "stock": {"i": "info", "w": "warnings", "f": "fundamentals"},
     "info": {"x": "fx", "cal": "calendar"},
     "account": {"l": "list", "h": "holdings", "bp": "buying-power", "se": "sellable",
                 "hist": "history"},
@@ -218,6 +218,10 @@ def expand_aliases(tokens: list[str]) -> list[str]:
     # 단독 숏컷: w <심볼> → 종목 원샷 대시보드
     if first in ("w", "워치") and len(tokens) >= 2:
         return ["market", "overview", *tokens[1:]]
+
+    # 단독 숏컷: f <심볼> → 펀더멘털 (PER·PBR·EPS, 네이버)
+    if first in ("f", "펀더") and len(tokens) >= 2:
+        return ["stock", "fundamentals", *tokens[1:]]
 
     # 단독 숏컷: wl → 관심종목 시세판 / wl add·rm·group 등 서브커맨드는 그대로 통과
     if first in ("wl", "관심"):
@@ -405,6 +409,7 @@ def _print_help(command) -> None:
             ("p", "보유 종목 (수량/손익/매수일)"),
             ("c 005930", "캔들 차트 (추세 확인, c AAPL -i 1m 도 가능)"),
             ("w 005930", "종목 대시보드 — 시세·보유·차트·호가·유의사항 한 화면"),
+            ("f 005930", "펀더멘털 — PER·PBR·EPS 등 (네이버 금융, 외부 참고)"),
             ("m p 005930", "market price 005930 (그룹/명령 약어)"),
             ("005930", "현재가 조회"),
             ("005930 000660", "여러 종목 현재가"),
@@ -483,7 +488,7 @@ def _completion_tree(command) -> dict:
         if full in tree:
             tree[alias] = tree[full]
     # 베어 숏컷(p=보유, w=대시보드, c=차트)과 메타 명령도 자동완성에 노출.
-    for kw in ("p", "w", "c", "help", "exit", "clear", "cl", "cls",
+    for kw in ("p", "w", "c", "f", "help", "exit", "clear", "cl", "cls",
                ":history", ":account", ":json", ":tick", ":reset", ":clear"):
         tree.setdefault(kw, None)
     if "watchlist" in tree:  # wl 숏컷 → watchlist 하위 트리(add/rm/group …)

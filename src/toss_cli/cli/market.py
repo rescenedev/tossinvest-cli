@@ -188,6 +188,13 @@ def _gather_overview(client, config, symbol: str) -> dict:
     safe("warnings", lambda: stock_api.get_stock_warnings(client, symbol))
     if config.account_seq is not None:
         safe("holdings", lambda: account_api.get_holdings(client, config.account_seq, symbol))
+    from ..api import naver  # 외부 참고 데이터(네이버) — 실패해도 대시보드는 유지
+
+    def fund_dict():
+        fund = naver.fetch(symbol)
+        return fund.as_dict() if fund else None
+
+    safe("fundamentals", fund_dict)
     return parts
 
 
@@ -202,7 +209,22 @@ def _render_overview(symbol: str, parts: dict) -> None:
             avg_price=holding.get("averagePurchasePrice") if holding else None,
         )
     _overview_orderbook(symbol, parts)
+    _overview_fundamentals(parts)
     _overview_warnings(parts)
+
+
+def _overview_fundamentals(parts: dict) -> None:
+    """대시보드 펀더멘털 한 줄 — PER·PBR·EPS·배당 (네이버 외부 참고 데이터)."""
+    from ..api import naver
+
+    fund = parts.get("fundamentals")
+    if not isinstance(fund, dict):
+        return
+    compact = [(label, fund[label]) for label in naver.COMPACT_LABELS if label in fund]
+    if not compact:
+        return
+    body = " · ".join(f"{label} [bold]{value}[/bold]" for label, value in compact)
+    render.console.print(f"[dim]펀더멘털(네이버)[/dim] {body}")
 
 
 def _first(rows: Any) -> dict:
