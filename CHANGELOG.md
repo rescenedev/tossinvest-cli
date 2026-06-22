@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## [0.4.7] - 2026-06-22
+
+### Added
+- 차트 **이격도(disparity ratio)** 출력 — 표시된 이동평균 기간별 `종가/MA×100` 을 차트 하단에 한 줄 요약(`c 005930`·`w 005930`·`market chart`). 100 기준 색상(평균 위 빨강·아래 파랑), 100±5 이탈은 굵게 강조(과열·침체). `indicators.disparity`/`disparity_latest` 순수 함수
+- REPL `clear`·`cl`·`cls` — 콜론 없이도 화면을 지웁니다 (기존 `:clear`·`:cls` 와 동일, 자동완성 노출)
+
 ## [0.4.6] - 2026-06-20
 
 ### Fixed

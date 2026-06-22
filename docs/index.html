@@ -472,7 +472,7 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
       <div class="cell cell-2 reveal">
         <div class="glyph">▂▄▆█</div>
         <h3>차트 · 대시보드</h3>
-        <p><code>c 005930</code> 캔들 차트(이동평균·RSI·볼린저), <code>w 005930</code> 종목 대시보드, <code>wl</code> 관심종목 시세판.</p>
+        <p><code>c 005930</code> 캔들 차트(이동평균·RSI·볼린저·이격도), <code>w 005930</code> 종목 대시보드, <code>wl</code> 관심종목 시세판.</p>
       </div>
       <div class="cell cell-2 reveal">
         <div class="glyph">{ }</div>
@@ -495,7 +495,7 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
       <div class="cheat-row"><div class="k">005930 100 70000</div><div class="v">100주 <b>지정가 70,000</b> 매수</div></div>
       <div class="cheat-row"><div class="k">w 005930</div><div class="v"><b>종목 대시보드</b> — 시세 · 보유 · 차트 · 호가 한 화면</div></div>
       <div class="cheat-row"><div class="k">wl</div><div class="v"><b>관심종목 시세판</b> — 전일 대비 등락순 (wl add 로 등록)</div></div>
-      <div class="cheat-row"><div class="k">c 005930 -P 3m</div><div class="v">캔들 차트 — MA · RSI · 볼린저 · 평단선</div></div>
+      <div class="cheat-row"><div class="k">c 005930 -P 3m</div><div class="v">캔들 차트 — MA · RSI · 볼린저 · 평단선 · <b>이격도</b></div></div>
       <div class="cheat-row"><div class="k">p</div><div class="v"><b>보유 종목</b> — 수량 · 평단 · 평가손익 · 수익률</div></div>
       <div class="cheat-row"><div class="k">m ob 005930</div><div class="v">호가창 (market orderbook)</div></div>
       <div class="cheat-row"><div class="k">a bp</div><div class="v">매수 가능 금액 (account buying-power)</div></div>
@@ -519,7 +519,7 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
         <div class="cmd-row"><code>orderbook</code><span>호가창</span></div>
         <div class="cmd-row"><code>trades</code><span>최근 체결 내역</span></div>
         <div class="cmd-row"><code>candles</code><span>캔들 데이터 (1m | 1d)</span></div>
-        <div class="cmd-row"><code>chart</code><span>터미널 캔들 차트 — 추세 확인</span></div>
+        <div class="cmd-row"><code>chart</code><span>터미널 캔들 차트 — MA · RSI · 볼린저 · 이격도</span></div>
         <div class="cmd-row"><code>limits</code><span>상한가 · 하한가</span></div>
       </div>
       <div class="cmd-group reveal">
@@ -575,7 +575,7 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
         <div class="cmd-row"><code>:json</code><span>JSON 출력 토글</span></div>
         <div class="cmd-row"><code>:tick</code><span>모의 시세 이동 — sim 전용</span></div>
         <div class="cmd-row"><code>:reset</code><span>시뮬레이션 상태 초기화 — sim 전용</span></div>
-        <div class="cmd-row"><code>:clear</code><span>화면 지우기</span></div>
+        <div class="cmd-row"><code>clear · cl</code><span>화면 지우기 (<code>cls</code> · <code>:clear</code> 동일)</span></div>
         <div class="cmd-row"><code>? · /help</code><span>명령 · 숏컷 목록</span></div>
         <div class="cmd-row"><code>/quit · q</code><span>종료 (exit · Ctrl-D · Ctrl-C 두 번)</span></div>
       </div>
@@ -648,7 +648,41 @@ footer { background: var(--bg-alt); border-top: 1px solid rgba(255,255,255,.06);
     <p class="sec-sub reveal">태그 한 번이면 PyPI 까지 자동으로 갑니다.</p>
     <div class="timeline reveal">
       <div class="rel">
-        <div class="v"><span class="tag-v">v0.4.3</span><span class="date">2026-06-14 · 최신</span></div>
+        <div class="v"><span class="tag-v">v0.4.7</span><span class="date">2026-06-22 · 최신</span></div>
+        <div>
+          <h3>이격도 · 화면 정리</h3>
+          <ul>
+            <li>차트 <b>이격도</b>(종가/MA×100) 출력 — 이동평균 기간별로 차트 하단에 요약, 100±5 이탈 강조</li>
+            <li>REPL <code>clear</code> · <code>cl</code> · <code>cls</code> — 콜론 없이 화면 지우기</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rel">
+        <div class="v"><span class="tag-v">v0.4.6</span><span class="date">2026-06-20</span></div>
+        <div>
+          <h3>버전 동기화</h3>
+          <ul><li><code>toss --version</code> 이 설치 패키지 버전을 그대로 읽도록 수정 (하드코딩 제거)</li></ul>
+        </div>
+      </div>
+      <div class="rel">
+        <div class="v"><span class="tag-v">v0.4.5</span><span class="date">2026-06-20</span></div>
+        <div>
+          <h3>명령 약어(prefix)</h3>
+          <ul><li><code>o list</code>·<code>acc h</code>·<code>au k status</code> 처럼 고유 접두어로 호출 — 모호하면 후보 안내</li></ul>
+        </div>
+      </div>
+      <div class="rel">
+        <div class="v"><span class="tag-v">v0.4.4</span><span class="date">2026-06-20</span></div>
+        <div>
+          <h3>셸 자동완성</h3>
+          <ul>
+            <li>bash · zsh · fish 자동완성 — <code>toss --install-completion</code> 또는 정적 스크립트</li>
+            <li>내부: api 계층 <code>ApiClient</code> 프로토콜 통일, mypy 타입 체크 CI 도입</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rel">
+        <div class="v"><span class="tag-v">v0.4.3</span><span class="date">2026-06-14</span></div>
         <div>
           <h3>견고성·버그 수정</h3>
           <ul>

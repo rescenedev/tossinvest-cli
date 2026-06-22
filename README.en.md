@@ -63,7 +63,7 @@ Inside the REPL:
 ```text
 toss> 005930                 # bare symbol → quote (KR codes & US tickers)
 toss> w AAPL                 # one-shot symbol dashboard (quote·position·chart·orderbook)
-toss> c 005930 -P 3m         # candlestick chart with MA/volume (--rsi 14, --bb 20)
+toss> c 005930 -P 3m         # candlestick chart with MA/volume + disparity ratio (--rsi 14, --bb 20)
 toss> wl add 005930 AAPL     # local watchlist; `wl` shows a board sorted by daily change
 toss> 005930 100             # buy 100 shares at market (confirmation prompt)
 toss> p                      # holdings with P/L and daily change
